@@ -22,12 +22,12 @@ var Rotations []fauxgl.Matrix
 func init() {
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 3; j++ {
-			m := fauxgl.Rotate(fauxgl.Vector{0, 0, 1}, float64(i)*math.Pi/2)
+			m := fauxgl.Rotate(fauxgl.Vector{X: 0, Y: 0, Z: 1}, float64(i)*math.Pi/2)
 			switch j {
 			case 1:
-				m = m.Rotate(fauxgl.Vector{1, 0, 0}, math.Pi/2)
+				m = m.Rotate(fauxgl.Vector{X: 1, Y: 0, Z: 0}, math.Pi/2)
 			case 2:
-				m = m.Rotate(fauxgl.Vector{0, 1, 0}, math.Pi/2)
+				m = m.Rotate(fauxgl.Vector{X: 0, Y: 1, Z: 0}, math.Pi/2)
 			}
 			Rotations = append(Rotations, m)
 		}
@@ -78,7 +78,7 @@ func main() {
 			sx := int(math.Ceil((s.X + P*2) * S))
 			sy := int(math.Ceil((s.Y + P*2) * S))
 			sz := int(math.Ceil((s.Z + P*2) * S))
-			items = append(items, binpack.Item{id, score, binpack.Vector{sx, sy, sz}})
+			items = append(items, binpack.Item{ID: id, Score: score, Size: binpack.Vector{X: sx, Y: sy, Z: sz}})
 		}
 		ok = true
 	}
@@ -92,7 +92,7 @@ func main() {
 	}
 
 	done = timed("bin packing")
-	box := binpack.Box{binpack.Vector{}, binpack.Vector{SizeX * S, SizeY * S, SizeZ * S}}
+	box := binpack.Box{Origin: binpack.Vector{}, Size: binpack.Vector{X: SizeX * S, Y: SizeY * S, Z: SizeZ * S}}
 	result := binpack.Pack(items, box)
 	done()
 
@@ -102,7 +102,7 @@ func main() {
 	mesh := fauxgl.NewEmptyMesh()
 	for _, placement := range result.Placements {
 		p := placement.Position
-		v := fauxgl.Vector{float64(p.X)/S + P, float64(p.Y)/S + P, float64(p.Z)/S + P}
+		v := fauxgl.Vector{X: float64(p.X)/S + P, Y: float64(p.Y)/S + P, Z: float64(p.Z)/S + P}
 		i := placement.Item.ID / len(Rotations)
 		j := placement.Item.ID % len(Rotations)
 		m := meshes[i].Copy()

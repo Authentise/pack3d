@@ -14,11 +14,11 @@ const (
 func (a Axis) Vector() fauxgl.Vector {
 	switch a {
 	case AxisX:
-		return fauxgl.Vector{1, 0, 0}
+		return fauxgl.Vector{X: 1, Y: 0, Z: 0}
 	case AxisY:
-		return fauxgl.Vector{0, 1, 0}
+		return fauxgl.Vector{X: 0, Y: 1, Z: 0}
 	case AxisZ:
-		return fauxgl.Vector{0, 0, 1}
+		return fauxgl.Vector{X: 0, Y: 0, Z: 1}
 	}
 	return fauxgl.Vector{}
 }
