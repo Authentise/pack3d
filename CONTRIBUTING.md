@@ -218,3 +218,21 @@ Pack3d build location
 `/src/go/bin/pack3d`
 
 This build needs to be copied into the Nautilus bin when deplyoing.
+
+
+## Build binary using go modules
+
+
+Download dependencies:
+```
+go mod download
+```
+
+Build binary:
+
+```
+cd cmd/pack3d
+env GOOS=linux GOARCH=arm64 go build -o ../../pack-3d
+```
+
+This will create a binary called `pack-3d` in the root directory of the project

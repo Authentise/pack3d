@@ -41,8 +41,8 @@ func timed(name string) func() {
 }
 
 func main() {
-	var jsonFileArg = flag.String("input_config_json_filename", "", "json config file")
-	var fileNameArg = flag.String("output_packing_json_filename", "pack3d", "export filename")
+	jsonFileArg := flag.String("input_config_json_filename", "", "json config file")
+	fileNameArg := flag.String("output_packing_json_filename", "pack3d", "export filename")
 	flag.Parse()
 
 	if os.Args[1] == "--version" {
@@ -84,7 +84,7 @@ func main() {
 	model := pack3d.NewModel()
 	scale := 1.0
 	var scaleMatrix fauxgl.Matrix
-	ok := false
+	var ok bool
 
 	spacing := config.Spacing / 2.0
 
