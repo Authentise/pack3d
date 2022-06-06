@@ -3,27 +3,36 @@
     "spacing": 1,
     "items": [
         {
-            "filename": "./tests/sc-44515_test/cube.stl",
+            "filename": "./manual_tests/sc-44515_test/cube.stl",
             "count": 10,
-            "scale": 1.0
+            "scale": 1.0,
+            "lock_theta_x": null,
+            "lock_theta_y": null,
+            "lock_theta_z": null
         },
         {
-            "filename": "./tests/sc-44515_test/shocks.stl",
+            "filename": "./manual_tests/sc-44515_test/shocks.stl",
             "count": 1,
-            "scale": 0.5
+            "scale": 0.5,
+            "lock_theta_x": null,
+            "lock_theta_y": 0.0,
+            "lock_theta_z": 90.0
         },
         {
-            "filename": "./tests/sc-44515_test/arrow-minted_cuboid.stl",
+            "filename": "./manual_tests/sc-44515_test/arrow-minted_cuboid.stl",
             "count": 2,
             "scale": 1.0,
             "copack": [
                 {
-                    "filename": "./tests/sc-44515_test/vertical_solid_arrow.stl"
+                    "filename": "./manual_tests/sc-44515_test/vertical_solid_arrow.stl"
                 },
                 {
-                    "filename": "./tests/sc-44515_test/vertical_solid_arrow__translated.stl"
+                    "filename": "./manual_tests/sc-44515_test/vertical_solid_arrow__translated.stl"
                 }
-            ]
+            ],
+            "lock_theta_x": null,
+            "lock_theta_y": null,
+            "lock_theta_z": null
         }
     ]
 }
