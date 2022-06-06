@@ -95,7 +95,7 @@ func main() {
 
 	/* Loading stl models */
 	coPackMap := make(map[string][]*Copack) // object to record co-packed meshes.
-	for _, item := range config.Items {
+	for _, item := range config.ConfigItems {
 
 		var mesh *fauxgl.Mesh
 		var err error
@@ -410,15 +410,17 @@ func main() {
 }
 
 type Config struct {
-	BuildVolume [3]float64 `json:"build_volume"`
-	Spacing     float64    `json:"spacing"`
-	Items       []struct {
-		Filename string    `json:"filename"`
-		Scale    float64   `json:"scale"`
-		Count    int       `json:"count"`
-		Copack   []*Copack `json:"copack,omitempty"`
-		AxesLock *AxesLock `json:"axes_lock"`
-	} `json:"items"`
+	BuildVolume [3]float64   `json:"build_volume"`
+	Spacing     float64      `json:"spacing"`
+	ConfigItems []ConfigItem `json:"items"`
+}
+
+type ConfigItem struct {
+	Filename string    `json:"filename"`
+	Scale    float64   `json:"scale"`
+	Count    int       `json:"count"`
+	Copack   []*Copack `json:"copack,omitempty"`
+	AxesLock *AxesLock `json:"axes_lock"`
 }
 
 type Copack struct {
