@@ -185,7 +185,24 @@ func main() {
 			}
 
 			// apply manufacturing rotation from given theta values.
-			mesh.ApplyManufacturingOrientation(item.AxesLock)
+			//Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
+			manufacturingRotation := fauxgl.Identity()
+			if AxesLock.theta_x != nil {
+				axis_x := AxisX.Vector() // x axis
+				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.theta_x))
+				manufacturingRotation = manufacturingRotation.RotateTo(axis_x, AxisZ.Vector())
+			}
+			if AxesLock.theta_y != nil {
+				axis_y := AxisY.Vector() // y axis
+				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.theta_y))
+				manufacturingRotation = manufacturingRotation.RotateTo(axis_y, AxisZ.Vector())
+			}
+			if AxesLock.theta_z != nil {
+				axis_z := AxisZ.Vector() // z axis
+				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.theta_z))
+				manufacturingRotation = manufacturingRotation.RotateTo(axis_z, AxisZ.Vector())
+			}
+			item.Mesh.Transform(manufacturingRotation)
 
 			// update arrays with the main co-packing mesh's data for the json output.
 			size := mesh.BoundingBox().Size()
@@ -312,6 +329,10 @@ func main() {
 		fillPercentage float64
 	)
 	transformation := success_model.Transformation()
+
+	// The scaling is applied directly in main.go and this is not ideal in terms of
+	// modularisation but for the sake of time it had to be squished in here.
+	// Tech debt: extract the scaling from main.go.
 	for j := 0; j < len(success_model.Items); j++ {
 		copack, ok := coPackMap[srcStlNames[j]]
 		if !ok {

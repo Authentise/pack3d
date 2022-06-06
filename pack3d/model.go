@@ -87,28 +87,6 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree) {
 	m.MaxVolume += tree[0].Volume() // what is tree[0]?
 }
 
-func (m *Model) ApplyManufacturingOrientation(mesh *fauxgl.Mesh, axesLock AxesLock) {
-	manufacturingRotation = fauxgl.Identity()
-
-	if AxesLock.theta_x == nil {
-		axis_x := AxisX.Vector() // x axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(AxesLock.theta_x))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_x, AxisZ.Vector())
-	}
-
-	if AxesLock.theta_y == nil {
-		axis_y := AxisY.Vector() // y axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(AxesLock.theta_y))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_y, AxisZ.Vector())
-	}
-
-	if AxesLock.theta_z == nil {
-		axis_z := AxisZ.Vector() // z axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(AxesLock.theta_z))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_z, AxisZ.Vector())
-	}
-}
-
 func (m *Model) Reset() {
 	items := m.Items
 	m.Items = nil
