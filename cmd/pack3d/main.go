@@ -40,6 +40,21 @@ func timed(name string) func() {
 	}
 }
 
+func Rotations(item Item) []fauxgl.Matrix {
+	availableRotations := make([]faugl.Matrix, 0)
+	if item.AxesLock.ThetaX == nil {
+		availableRotations = append(availableRotations, AxisXRotations...)
+	}
+	if item.AxesLock.ThetaY == nil {
+		availableRotations = append(availableRotations, AxisYRotations...)
+	}
+	if item.AxesLock.ThetaZ == nil {
+		availableRotations = append(availableRotations, AxisZRotations...)
+	}
+
+	return availableRotations
+}
+
 func main() {
 	jsonFileArg := flag.String("input_config_json_filename", "", "json config file")
 	fileNameArg := flag.String("output_packing_json_filename", "pack3d", "export filename")
@@ -240,7 +255,7 @@ func main() {
 
 		done = timed("building bvh tree")
 
-		model.Add(mesh, bvhDetail, item.Count, spacing)
+		model.Add(mesh, bvhDetail, item.Count, spacing, Rotations)
 		ok = true
 		done()
 

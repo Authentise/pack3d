@@ -7,21 +7,6 @@ import (
 	"github.com/fogleman/fauxgl"
 )
 
-func Rotations(item Item) []fauxgl.Matrix {
-	availableRotations := make([]faugl.Matrix, 0)
-	if item.AxesLock.ThetaX == nil {
-		availableRotations = append(availableRotations, AxisXRotations...)
-	}
-	if item.AxesLock.ThetaY == nil {
-		availableRotations = append(availableRotations, AxisYRotations...)
-	}
-	if item.AxesLock.ThetaZ == nil {
-		availableRotations = append(availableRotations, AxisZRotations...)
-	}
-
-	return availableRotations
-}
-
 var AxisXRotations []fauxgl.Matrix
 var AxisYRotations []fauxgl.Matrix
 var AxisZRotations []fauxgl.Matrix
@@ -36,7 +21,6 @@ func init() {
 				m := fauxgl.Rotate(up, float64(i)*fauxgl.Radians(90)) // Rotation matrix in z axis (4 by 4 matrix)
 				//fmt.Println(Axis(a).Vector().MulScalar(float64(s))) is all axis
 				m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
-				Rotations = append(Rotations, m)                           // 24 rotation matrices
 
 				if a == 1 {
 					AxisXRotations = append(AxisXRotations, m) // 8 rotation matrices
@@ -57,14 +41,15 @@ type Undo struct {
 }
 
 type Item struct {
-	Mesh        *fauxgl.Mesh
-	Trees       []Tree // struc tree -> []Box, struc Box -> {min, max} vector
-	Rotation    int    // index of a rotation within Rotations.
-	Translation fauxgl.Vector
+	Mesh               *fauxgl.Mesh
+	Trees              []Tree // struc tree -> []Box, struc Box -> {min, max} vector
+	Rotation           int    // index of a rotation within Rotations.
+	Translation        fauxgl.Vector
+	AvailableRotations []fauxgl.Matrix
 }
 
 func (item *Item) Matrix() fauxgl.Matrix {
-	return Rotations[item.Rotation].Translate(item.Translation)
+	return item.AvailableRotations[item.Rotation].Translate(item.Translation)
 }
 
 func (item *Item) Copy() *Item {
@@ -83,25 +68,25 @@ func NewModel() *Model {
 	return &Model{nil, 0, 0, 1}
 }
 
-func (m *Model) Add(mesh *fauxgl.Mesh, detail, count int, spacing float64) {
+func (m *Model) Add(mesh *fauxgl.Mesh, detail, count int, spacing float64, rotations []fauxgl.Matrix) {
 	//spacing is the min required distance between objects
 	tree := NewTreeForMesh(mesh, detail, spacing)
-	trees := make([]Tree, len(Rotations))
-	for i, m := range Rotations {
+	trees := make([]Tree, len(rotations))
+	for i, m := range rotations {
 		trees[i] = tree.Transform(m)
 	}
 	for i := 0; i < count; i++ {
-		m.add(mesh, trees)
+		m.add(mesh, trees, rotations)
 	}
 }
 
-func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree) {
+func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree, rotations []fauxgl.Matrix) {
 	index := len(m.Items)
-	item := Item{mesh, trees, 0, fauxgl.Vector{}} // the translation is 0 for now
+	item := Item{mesh, trees, 0, fauxgl.Vector{}, rotations} // the translation is 0 for now
 	m.Items = append(m.Items, &item)
 	d := 1.0
 	for !m.ValidChange(index) {
-		item.Rotation = rand.Intn(len(Rotations))
+		item.Rotation = rand.Intn(len(rotations))
 
 		item.Translation = fauxgl.RandomUnitVector().MulScalar(d)
 		d *= 1.2
@@ -117,7 +102,7 @@ func (m *Model) Reset() {
 	m.MinVolume = 0
 	m.MaxVolume = 0
 	for _, item := range items {
-		m.add(item.Mesh, item.Trees)
+		m.add(item.Mesh, item.Trees, item.AvailableRotations)
 	}
 }
 
@@ -252,7 +237,7 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 		j += 1
 		if rand.Intn(4) == 0 {
 			// rotate, 1/4 of probability
-			item.Rotation = rand.Intn(len(Rotations)) // do a random rotation, it's a random index
+			item.Rotation = rand.Intn(len(item.AvailableRotations)) // do a random rotation, it's a random index
 		} else {
 			// translate, 3/4 of probability
 			offset := Axis(rand.Intn(3) + 1).Vector()                   // Pick a random axis
