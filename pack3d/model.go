@@ -13,13 +13,13 @@ var Rotations []fauxgl.Matrix
 func init() {
 	axisDirections := [2]int{-1, 1}
 	for i := 0; i < 4; i++ { // every axis 4 times to return to the original position
-		for _, s := range axisDirections{  // switch axis direction - or +
+		for _, s := range axisDirections { // switch axis direction - or +
 			for a := 1; a <= 3; a++ { // switch axis (3 axis)
-				up := AxisZ.Vector() // z axis
+				up := AxisZ.Vector()                                  // z axis
 				m := fauxgl.Rotate(up, float64(i)*fauxgl.Radians(90)) // Rotation matrix in z axis (4 by 4 matrix)
 				//fmt.Println(Axis(a).Vector().MulScalar(float64(s))) is all axis
 				m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
-				Rotations = append(Rotations, m) // 24 rotation matrices
+				Rotations = append(Rotations, m)                           // 24 rotation matrices
 			}
 		}
 	}
@@ -48,17 +48,18 @@ func (item *Item) Copy() *Item {
 }
 
 type Model struct {
-	Items     []*Item
-	MinVolume float64
-	MaxVolume float64
-	Deviation float64
+	Items                 []*Item
+	MinVolume             float64
+	MaxVolume             float64
+	Deviation             float64
+	ManufacturingRotation *fauxgl.Matrix
 }
 
 func NewModel() *Model {
 	return &Model{nil, 0, 0, 1}
 }
 
-func (m *Model) Add(mesh *fauxgl.Mesh, detail, count int, spacing float64){
+func (m *Model) Add(mesh *fauxgl.Mesh, detail, count int, spacing float64) {
 	//spacing is the min required distance between objects
 	tree := NewTreeForMesh(mesh, detail, spacing)
 	trees := make([]Tree, len(Rotations))
@@ -83,7 +84,25 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree) {
 	}
 	tree := trees[0]
 	m.MinVolume = math.Max(m.MinVolume, tree[0].Volume())
-	m.MaxVolume += tree[0].Volume()  // what is tree[0]?
+	m.MaxVolume += tree[0].Volume() // what is tree[0]?
+}
+
+func (m *Model) ApplyManufacturingOrientation(mesh *fauxgl.Mesh, axesLock AxesLock) {
+	// extract axes rotation values.
+
+	manufacturingRotation = fauxgl.Identity()
+
+	if AxesLock.theta_x == nil {
+		axis_x := AxisX.Vector() // z axis
+		m := fauxgl.Rotate(axis_x, fauxgl.Radians(AxesLock.theta_x))
+		m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
+	}
+
+	if AxesLock.theta_y == nil {
+		axis_y := AxisY.Vector() // z axis
+		m := fauxgl.Rotate(axis_y, fauxgl.Radians(AxesLock.theta_y))
+		m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
+	}
 }
 
 func (m *Model) Reset() {
@@ -98,7 +117,7 @@ func (m *Model) Reset() {
 
 func (m *Model) Pack(iterations int, callback AnnealCallback, singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (*Model, int) {
 	e := 0.5
-	runannel, ntime:= Anneal(m, 1e0*e, 1e-4*e, iterations, callback, singleStlSize, frameSize, packItemNum)
+	runannel, ntime := Anneal(m, 1e0*e, 1e-4*e, iterations, callback, singleStlSize, frameSize, packItemNum)
 	annealModel := runannel.(*Model)
 	return annealModel, ntime
 }
@@ -156,7 +175,7 @@ func (m *Model) TreeMesh() *fauxgl.Mesh {
 func (m *Model) ValidChange(i int) bool {
 	item1 := m.Items[i]
 	tree1 := item1.Trees[item1.Rotation]
-	for j := 0; j < len(m.Items); j++ {  // go through all other items
+	for j := 0; j < len(m.Items); j++ { // go through all other items
 		if j == i {
 			continue
 		}
@@ -169,7 +188,6 @@ func (m *Model) ValidChange(i int) bool {
 	return true
 }
 
-
 /*True if the passed move it within maximum_packing_area, false in all other cases.*/
 func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector) bool {
 	var points []fauxgl.Vector
@@ -179,16 +197,16 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 	size := singleStlSize[i]
 
 	// Rotate around the center of volume while checking if rotation is valid. (do not rotate around origin)
-	points = append(points,fauxgl.V(size.X/2, size.Y/2, size.Z/2))
-	points = append(points,fauxgl.V(size.X/2, -size.Y/2, size.Z/2))
-	points = append(points,fauxgl.V(size.X/2, -size.Y/2, -size.Z/2))
-	points = append(points,fauxgl.V(size.X/2, size.Y/2, -size.Z/2))
-	points = append(points,fauxgl.V(-size.X/2, size.Y/2, size.Z/2))
-	points = append(points,fauxgl.V(-size.X/2, size.Y/2, -size.Z/2))
-	points = append(points,fauxgl.V(-size.X/2, -size.Y/2, size.Z/2))
-	points = append(points,fauxgl.V(-size.X/2, -size.Y/2, -size.Z/2))
+	points = append(points, fauxgl.V(size.X/2, size.Y/2, size.Z/2))
+	points = append(points, fauxgl.V(size.X/2, -size.Y/2, size.Z/2))
+	points = append(points, fauxgl.V(size.X/2, -size.Y/2, -size.Z/2))
+	points = append(points, fauxgl.V(size.X/2, size.Y/2, -size.Z/2))
+	points = append(points, fauxgl.V(-size.X/2, size.Y/2, size.Z/2))
+	points = append(points, fauxgl.V(-size.X/2, size.Y/2, -size.Z/2))
+	points = append(points, fauxgl.V(-size.X/2, -size.Y/2, size.Z/2))
+	points = append(points, fauxgl.V(-size.X/2, -size.Y/2, -size.Z/2))
 
-	for j:=0; j<8; j++{
+	for j := 0; j < 8; j++ {
 		point = points[j]
 		point = transformation.MulPosition(point)
 		point = point.Abs()
@@ -201,7 +219,6 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 
 	return true
 }
-
 
 func (m *Model) BoundingBox() fauxgl.Box {
 	box := fauxgl.EmptyBox
@@ -222,7 +239,7 @@ func (m *Model) Energy() float64 {
 
 func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (Undo, int) {
 	i := rand.Intn(packItemNum) // choose a random index in models
-	item := m.Items[i]  // single model
+	item := m.Items[i]          // single model
 	undo := Undo{i, item.Rotation, item.Translation}
 	j := 0
 	for {
@@ -232,9 +249,9 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 			item.Rotation = rand.Intn(len(Rotations)) // do a random rotation, it's a random index
 		} else {
 			// translate, 3/4 of probability
-			offset := Axis(rand.Intn(3) + 1).Vector()  // Pick a random axis
-			offset = offset.MulScalar(rand.NormFloat64() * m.Deviation)  // A random translation in x or y or z (vector)
-			item.Translation = item.Translation.Add(offset)  // add offset to translation
+			offset := Axis(rand.Intn(3) + 1).Vector()                   // Pick a random axis
+			offset = offset.MulScalar(rand.NormFloat64() * m.Deviation) // A random translation in x or y or z (vector)
+			item.Translation = item.Translation.Add(offset)             // add offset to translation
 		}
 
 		if m.ValidChange(i) && m.ValidBound(i, singleStlSize, frameSize) {
@@ -243,11 +260,10 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 
 		item.Rotation = undo.Rotation
 		item.Translation = undo.Translation
-		if j>=100 {
+		if j >= 100 {
 			break
 		}
 	}
-
 
 	return undo, j
 }
@@ -265,4 +281,3 @@ func (m *Model) Copy() Annealable {
 	}
 	return &Model{items, m.MinVolume, m.MaxVolume, m.Deviation}
 }
-
