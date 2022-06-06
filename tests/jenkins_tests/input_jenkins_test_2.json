@@ -1,0 +1,36 @@
+{
+    "build_volume": [120, 120, 120],
+    "spacing": 5,
+    "items": [
+        {
+            "filename": "tests/jenkins_tests/logo.stl",
+            "count": 3,
+            "scale": 1.0,
+            "copack": [
+                {
+                    "filename": "tests/jenkins_tests/corner.stl"
+                }
+            ]
+        },
+        {
+            "filename": "tests/jenkins_tests/logo.stl",
+            "count": 2,
+            "scale": 2.0,
+            "copack": [
+                {
+                    "filename": "tests/jenkins_tests/corner.stl"
+                }
+            ]
+        },
+        {
+            "filename": "tests/jenkins_tests/cube.stl",
+            "count": 2,
+            "scale": 4.0
+        },
+        {
+            "filename": "tests/jenkins_tests/cube.stl",
+            "count": 5,
+            "scale": 1.0
+        }
+    ]
+}
