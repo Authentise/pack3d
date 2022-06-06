@@ -17,8 +17,8 @@
             "count": 1,
             "scale": 0.5,
             "axes_lock": {
-                "theta_x": 30.0,
-                "theta_y": 0.0,
+                "theta_x": null,
+                "theta_y": -20.0,
                 "theta_z": 0.0
             }
         },

@@ -122,7 +122,6 @@ func main() {
 			// apply manufacturing rotation from given theta values.
 			// Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
 			manufacturingRotation := fauxgl.Identity()
-			fmt.Println("           ###--> ", item.AxesLock)
 			if item.AxesLock.ThetaX != nil {
 				axis_x := pack3d.AxisX.Vector() // x axis
 				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
@@ -204,7 +203,6 @@ func main() {
 			// apply manufacturing rotation from given theta values.
 			// Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
 			manufacturingRotation := fauxgl.Identity()
-			fmt.Println("           ###--> ", item.AxesLock)
 			if item.AxesLock.ThetaX != nil {
 				axis_x := pack3d.AxisX.Vector() // x axis
 				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
