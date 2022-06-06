@@ -187,19 +187,19 @@ func main() {
 			// apply manufacturing rotation from given theta values.
 			// Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
 			manufacturingRotation := fauxgl.Identity()
-			if item.AxesLock.theta_x != nil {
+			if item.AxesLock.ThetaX != nil {
 				axis_x := pack3d.AxisX.Vector() // x axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.theta_x))
+				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_x, pack3d.AxisZ.Vector())
 			}
-			if item.AxesLock.theta_y != nil {
+			if item.AxesLock.ThetaY != nil {
 				axis_y := pack3d.AxisY.Vector() // y axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.theta_y))
+				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.ThetaY))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_y, pack3d.AxisZ.Vector())
 			}
-			if item.AxesLock.theta_z != nil {
+			if item.AxesLock.ThetaZ != nil {
 				axis_z := pack3d.AxisZ.Vector() // z axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.theta_z))
+				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.ThetaZ))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_z, pack3d.AxisZ.Vector())
 			}
 			mesh.Transform(manufacturingRotation)
@@ -401,7 +401,7 @@ type Config struct {
 		Scale    float64   `json:"scale"`
 		Count    int       `json:"count"`
 		Copack   []*Copack `json:"copack,omitempty"`
-		AxesLock AxesLock  `json:"axes_lock"`
+		AxesLock *AxesLock `json:"axes_lock"`
 	} `json:"items"`
 }
 
@@ -412,7 +412,7 @@ type Copack struct {
 }
 
 type AxesLock struct {
-	theta_x *float64 `json:"theta_x"`
-	theta_y *float64 `json:"theta_y"`
-	theta_z *float64 `json:"theta_z"`
+	ThetaX *float64 `json:"theta_x"`
+	ThetaY *float64 `json:"theta_y"`
+	ThetaZ *float64 `json:"theta_z"`
 }
