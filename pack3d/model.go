@@ -48,11 +48,10 @@ func (item *Item) Copy() *Item {
 }
 
 type Model struct {
-	Items                 []*Item
-	MinVolume             float64
-	MaxVolume             float64
-	Deviation             float64
-	ManufacturingRotation *fauxgl.Matrix
+	Items     []*Item
+	MinVolume float64
+	MaxVolume float64
+	Deviation float64
 }
 
 func NewModel() *Model {

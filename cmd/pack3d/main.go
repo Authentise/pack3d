@@ -187,17 +187,17 @@ func main() {
 			// apply manufacturing rotation from given theta values.
 			//Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
 			manufacturingRotation := fauxgl.Identity()
-			if AxesLock.theta_x != nil {
+			if item.AxesLock.theta_x != nil {
 				axis_x := AxisX.Vector() // x axis
 				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.theta_x))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_x, AxisZ.Vector())
 			}
-			if AxesLock.theta_y != nil {
+			if item.AxesLock.theta_y != nil {
 				axis_y := AxisY.Vector() // y axis
 				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.theta_y))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_y, AxisZ.Vector())
 			}
-			if AxesLock.theta_z != nil {
+			if item.AxesLock.theta_z != nil {
 				axis_z := AxisZ.Vector() // z axis
 				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.theta_z))
 				manufacturingRotation = manufacturingRotation.RotateTo(axis_z, AxisZ.Vector())
