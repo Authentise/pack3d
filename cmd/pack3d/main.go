@@ -69,10 +69,6 @@ func main() {
 		VolumeWithSpacing float64
 	}
 
-	type err_msg struct {
-		Error string
-	}
-
 	var (
 		singleStlSize []fauxgl.Vector
 		scaleStl      []fauxgl.Matrix
@@ -87,7 +83,7 @@ func main() {
 
 	model := pack3d.NewModel()
 	scale := 1.0
-	scaleMatrix := fauxgl.Matrix{}
+	var scaleMatrix fauxgl.Matrix
 	ok := false
 
 	spacing := config.Spacing / 2.0
@@ -281,7 +277,7 @@ func main() {
 				fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 				fmt.Println("-----------------------------------")
 				maxItemNum = packItemNum - 1
-				packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum) / 2)))
+				packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum)) / 2))
 
 				model.Reset()
 				model.Transformation()[packItemNum] = null
@@ -313,7 +309,7 @@ func main() {
 		fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 		fmt.Println("-----------------------------------------")
 		minItemNum = packItemNum + 1
-		packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum) / 2)))
+		packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum)) / 2))
 		success_model = model
 		start = time.Now()
 

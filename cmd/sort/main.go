@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	. "github.com/fogleman/fauxgl"
+	"github.com/fogleman/fauxgl"
 )
 
 func main() {
@@ -14,29 +14,29 @@ func main() {
 	_count, _ := strconv.ParseInt(os.Args[2], 0, 0)
 	count := int(_count)
 
-	mesh, err := LoadMesh(path)
+	mesh, err := fauxgl.LoadMesh(path)
 	if err != nil {
 		panic(err)
 	}
 
-	mesh.MoveTo(Vector{}, Vector{})
+	mesh.MoveTo(fauxgl.Vector{}, fauxgl.Vector{})
 
-	meshes := make([]*Mesh, 0, count)
+	meshes := make([]*fauxgl.Mesh, 0, count)
 	n := len(mesh.Triangles) / count
 	for i := 0; i < len(mesh.Triangles); i += n {
-		m := NewTriangleMesh(mesh.Triangles[i : i+n])
+		m := fauxgl.NewTriangleMesh(mesh.Triangles[i : i+n])
 		meshes = append(meshes, m)
 	}
 
 	sort.Slice(meshes, func(i, j int) bool {
 		a := meshes[i].BoundingBox().Min
 		b := meshes[j].BoundingBox().Min
-		a = Vector{a.Z, a.X, a.Y}
-		b = Vector{b.Z, b.X, b.Y}
+		a = fauxgl.Vector{X: a.Z, Y: a.X, Z: a.Y}
+		b = fauxgl.Vector{X: b.Z, Y: b.X, Z: b.Y}
 		return a.Less(b)
 	})
 
-	result := NewEmptyMesh()
+	result := fauxgl.NewEmptyMesh()
 	for _, mesh := range meshes {
 		result.Add(mesh)
 		fmt.Println(mesh.BoundingBox())
