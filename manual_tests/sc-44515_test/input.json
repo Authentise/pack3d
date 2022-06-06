@@ -6,17 +6,21 @@
             "filename": "./manual_tests/sc-44515_test/cube.stl",
             "count": 10,
             "scale": 1.0,
-            "lock_theta_x": null,
-            "lock_theta_y": null,
-            "lock_theta_z": null
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
         },
         {
             "filename": "./manual_tests/sc-44515_test/shocks.stl",
             "count": 1,
             "scale": 0.5,
-            "lock_theta_x": null,
-            "lock_theta_y": 0.0,
-            "lock_theta_z": 90.0
+            "axes_lock": {
+                "theta_x": 90.0,
+                "theta_y": 20.0,
+                "theta_z": null
+            }
         },
         {
             "filename": "./manual_tests/sc-44515_test/arrow-minted_cuboid.stl",
@@ -30,9 +34,12 @@
                     "filename": "./manual_tests/sc-44515_test/vertical_solid_arrow__translated.stl"
                 }
             ],
-            "lock_theta_x": null,
-            "lock_theta_y": null,
-            "lock_theta_z": null
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+            
         }
     ]
 }

@@ -98,7 +98,7 @@ func main() {
 	//fmt.Println(frameSize)
 
 	/* Loading stl models */
-	coPackMap := make(map[string][]*Copack)  // object to record co-packed meshes.
+	coPackMap := make(map[string][]*Copack) // object to record co-packed meshes.
 	for _, item := range config.Items {
 
 		var mesh *fauxgl.Mesh
@@ -183,6 +183,9 @@ func main() {
 				// add coMesh to the main mesh.
 				mesh.Add(coMesh)
 			}
+
+			// apply manufacturing rotation from given theta values.
+			mesh.ApplyManufacturingOrientation(item.AxesLock)
 
 			// update arrays with the main co-packing mesh's data for the json output.
 			size := mesh.BoundingBox().Size()
@@ -314,7 +317,7 @@ func main() {
 		if !ok {
 
 			t := transformation[j]
-			st := t.Mul(scaleStl[j])  // scaled transformation for the j-th mesh.
+			st := t.Mul(scaleStl[j]) // scaled transformation for the j-th mesh.
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
@@ -329,9 +332,9 @@ func main() {
 			transMaps = append(transMaps, TransMap{srcStlNames[j], transMatrix, fillVolumeWithSpacing})
 
 		} else {
-			
+
 			t := transformation[j]
-			st := t.Mul(scaleStl[j])  // scaled transformation for the j-th mesh.
+			st := t.Mul(scaleStl[j]) // scaled transformation for the j-th mesh.
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
@@ -364,7 +367,7 @@ func main() {
 
 	// STL file is no longer created, results returned as JSON for separate packer.
 	// Unblock the following line if want to generate the packing STL
-	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
+	model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
 	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
 }
@@ -377,11 +380,18 @@ type Config struct {
 		Scale    float64   `json:"scale"`
 		Count    int       `json:"count"`
 		Copack   []*Copack `json:"copack,omitempty"`
+		AxesLock AxesLock  `json:"axes_lock"`
 	} `json:"items"`
 }
 
 type Copack struct {
-	Filename     string    `json:"filename"`
+	Filename string `json:"filename"`
 	// Scale        float64   `json:"scale"`
 	// Transformation [4][4]float64 `json:"transformation"`  // ch32838 initially required this field then the requirements changed.
+}
+
+type AxesLock struct {
+	theta_x *float64 `json:"theta_x"`
+	theta_y *float64 `json:"theta_y"`
+	theta_z *float64 `json:"theta_z"`
 }
