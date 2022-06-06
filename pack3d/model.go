@@ -88,20 +88,24 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree) {
 }
 
 func (m *Model) ApplyManufacturingOrientation(mesh *fauxgl.Mesh, axesLock AxesLock) {
-	// extract axes rotation values.
-
 	manufacturingRotation = fauxgl.Identity()
 
 	if AxesLock.theta_x == nil {
-		axis_x := AxisX.Vector() // z axis
-		m := fauxgl.Rotate(axis_x, fauxgl.Radians(AxesLock.theta_x))
-		m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
+		axis_x := AxisX.Vector() // x axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(AxesLock.theta_x))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_x, AxisZ.Vector())
 	}
 
 	if AxesLock.theta_y == nil {
-		axis_y := AxisY.Vector() // z axis
-		m := fauxgl.Rotate(axis_y, fauxgl.Radians(AxesLock.theta_y))
-		m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
+		axis_y := AxisY.Vector() // y axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(AxesLock.theta_y))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_y, AxisZ.Vector())
+	}
+
+	if AxesLock.theta_z == nil {
+		axis_z := AxisZ.Vector() // z axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(AxesLock.theta_z))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_z, AxisZ.Vector())
 	}
 }
 
