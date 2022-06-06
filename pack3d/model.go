@@ -7,7 +7,24 @@ import (
 	"github.com/fogleman/fauxgl"
 )
 
-var Rotations []fauxgl.Matrix
+func Rotations(item Item) []fauxgl.Matrix {
+	availableRotations := make([]faugl.Matrix, 0)
+	if item.AxesLock.ThetaX == nil {
+		availableRotations = append(availableRotations, AxisXRotations...)
+	}
+	if item.AxesLock.ThetaY == nil {
+		availableRotations = append(availableRotations, AxisYRotations...)
+	}
+	if item.AxesLock.ThetaZ == nil {
+		availableRotations = append(availableRotations, AxisZRotations...)
+	}
+
+	return availableRotations
+}
+
+var AxisXRotations []fauxgl.Matrix
+var AxisYRotations []fauxgl.Matrix
+var AxisZRotations []fauxgl.Matrix
 
 /*The loop runs 24 times for all the rotation possibility*/
 func init() {
@@ -20,6 +37,14 @@ func init() {
 				//fmt.Println(Axis(a).Vector().MulScalar(float64(s))) is all axis
 				m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
 				Rotations = append(Rotations, m)                           // 24 rotation matrices
+
+				if a == 1 {
+					AxisXRotations = append(AxisXRotations, m) // 8 rotation matrices
+				} else if a == 2 {
+					AxisYRotations = append(AxisYRotations, m) // 8 rotation matrices
+				} else if a == 3 {
+					AxisZRotations = append(AxisZRotations, m) // 8 rotation matrices
+				}
 			}
 		}
 	}
@@ -34,7 +59,7 @@ type Undo struct {
 type Item struct {
 	Mesh        *fauxgl.Mesh
 	Trees       []Tree // struc tree -> []Box, struc Box -> {min, max} vector
-	Rotation    int
+	Rotation    int    // index of a rotation within Rotations.
 	Translation fauxgl.Vector
 }
 
