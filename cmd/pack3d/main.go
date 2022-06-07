@@ -63,28 +63,29 @@ func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
 }
 
 func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
-	// This function's aim is to create an overall rotation matrix as
+	// This function's aim is to create a rotation matrix as
 	// a composition of rotations along each unlocked axis.
+	// mfgRotationMtx is a 4x4 matrix.
 
 	// Tech debt: this function might need to be moved into a function in fauxgl.mesh.
 
-	manufacturingRotation := fauxgl.Identity()
+	mfgRotationMtx := fauxgl.Identity()
 	if item.AxesLock.ThetaX != nil {
 		axisX := pack3d.AxisX.Vector() // x axis
-		manufacturingRotation = manufacturingRotation.Rotate(axisX, fauxgl.Radians(*item.AxesLock.ThetaX))
-		manufacturingRotation = manufacturingRotation.RotateTo(axisX, pack3d.AxisZ.Vector())
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisX, fauxgl.Radians(*item.AxesLock.ThetaX))
+		mfgRotationMtx = mfgRotationMtx.RotateTo(axisX, pack3d.AxisZ.Vector())
 	}
 	if item.AxesLock.ThetaY != nil {
 		axisY := pack3d.AxisY.Vector() // y axis
-		manufacturingRotation = manufacturingRotation.Rotate(axisY, fauxgl.Radians(*item.AxesLock.ThetaY))
-		manufacturingRotation = manufacturingRotation.RotateTo(axisY, pack3d.AxisZ.Vector())
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisY, fauxgl.Radians(*item.AxesLock.ThetaY))
+		mfgRotationMtx = mfgRotationMtx.RotateTo(axisY, pack3d.AxisZ.Vector())
 	}
 	if item.AxesLock.ThetaZ != nil {
 		axisZ := pack3d.AxisZ.Vector() // z axis
-		manufacturingRotation = manufacturingRotation.Rotate(axisZ, fauxgl.Radians(*item.AxesLock.ThetaZ))
-		manufacturingRotation = manufacturingRotation.RotateTo(axisZ, pack3d.AxisZ.Vector())
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisZ, fauxgl.Radians(*item.AxesLock.ThetaZ))
+		mfgRotationMtx = mfgRotationMtx.RotateTo(axisZ, pack3d.AxisZ.Vector())
 	}
-	return manufacturingRotation
+	return mfgRotationMtx
 }
 
 func main() {
