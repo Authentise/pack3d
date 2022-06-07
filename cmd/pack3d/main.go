@@ -40,7 +40,15 @@ func timed(name string) func() {
 	}
 }
 
-func getPossibleRotations(axesLock *AxesLock) []fauxgl.Matrix {
+func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
+	// This function returns only the available rotations
+	// which depend on the unlocked axes provided by the user.
+	// An unlocked axis is characterised by a `nil` theta angle.
+	// Setting a theta angle with a Float instead means that
+	// that rotation axis is locked to a specific angle.
+
+	// Tech debt: this function should probably be moved into model.go
+
 	availableRotations := make([]fauxgl.Matrix, 0)
 	if axesLock.ThetaX == nil {
 		availableRotations = append(availableRotations, pack3d.AxisXRotations...)
@@ -51,8 +59,32 @@ func getPossibleRotations(axesLock *AxesLock) []fauxgl.Matrix {
 	if axesLock.ThetaZ == nil {
 		availableRotations = append(availableRotations, pack3d.AxisZRotations...)
 	}
-
 	return availableRotations
+}
+
+func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
+	// This function's aim is to create an overall rotation matrix as
+	// a composition of rotations along each unlocked axis.
+
+	// Tech debt: this function might need to be moved into a function in fauxgl.mesh.
+
+	manufacturingRotation := fauxgl.Identity()
+	if item.AxesLock.ThetaX != nil {
+		axis_x := pack3d.AxisX.Vector() // x axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_x, pack3d.AxisZ.Vector())
+	}
+	if item.AxesLock.ThetaY != nil {
+		axis_y := pack3d.AxisY.Vector() // y axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.ThetaY))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_y, pack3d.AxisZ.Vector())
+	}
+	if item.AxesLock.ThetaZ != nil {
+		axis_z := pack3d.AxisZ.Vector() // z axis
+		manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.ThetaZ))
+		manufacturingRotation = manufacturingRotation.RotateTo(axis_z, pack3d.AxisZ.Vector())
+	}
+	return manufacturingRotation
 }
 
 func main() {
@@ -134,25 +166,9 @@ func main() {
 				done()
 			}
 
-			// apply manufacturing rotation from given theta values.
-			// Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
-			manufacturingRotation := fauxgl.Identity()
-			if item.AxesLock.ThetaX != nil {
-				axis_x := pack3d.AxisX.Vector() // x axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_x, pack3d.AxisZ.Vector())
-			}
-			if item.AxesLock.ThetaY != nil {
-				axis_y := pack3d.AxisY.Vector() // y axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.ThetaY))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_y, pack3d.AxisZ.Vector())
-			}
-			if item.AxesLock.ThetaZ != nil {
-				axis_z := pack3d.AxisZ.Vector() // z axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.ThetaZ))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_z, pack3d.AxisZ.Vector())
-			}
-			mesh.Transform(manufacturingRotation)
+			// apply specified manufacturing rotation from given theta values.
+			// Note: do not confuse manufacturing orientation with packing orientation.
+			mesh.Transform(getManufacturingOrientation(item))
 
 			// update arrays.
 			size := mesh.BoundingBox().Size()
@@ -215,25 +231,9 @@ func main() {
 				mesh.Add(coMesh)
 			}
 
-			// apply manufacturing rotation from given theta values.
-			// Tech Debt: this code block needs to be abstracted into a function in fauxgl.mesh.
-			manufacturingRotation := fauxgl.Identity()
-			if item.AxesLock.ThetaX != nil {
-				axis_x := pack3d.AxisX.Vector() // x axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_x, pack3d.AxisZ.Vector())
-			}
-			if item.AxesLock.ThetaY != nil {
-				axis_y := pack3d.AxisY.Vector() // y axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.ThetaY))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_y, pack3d.AxisZ.Vector())
-			}
-			if item.AxesLock.ThetaZ != nil {
-				axis_z := pack3d.AxisZ.Vector() // z axis
-				manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.ThetaZ))
-				manufacturingRotation = manufacturingRotation.RotateTo(axis_z, pack3d.AxisZ.Vector())
-			}
-			mesh.Transform(manufacturingRotation)
+			// apply specified manufacturing rotation from given theta values.
+			// Note: do not confuse manufacturing orientation with packing orientation.
+			mesh.Transform(getManufacturingOrientation(item))
 
 			// update arrays with the main co-packing mesh's data for the json output.
 			size := mesh.BoundingBox().Size()
@@ -255,7 +255,7 @@ func main() {
 
 		done = timed("building bvh tree")
 
-		model.Add(mesh, bvhDetail, item.Count, spacing, getPossibleRotations(item.AxesLock))
+		model.Add(mesh, bvhDetail, item.Count, spacing, getAvailableRotations(item.AxesLock))
 		ok = true
 		done()
 

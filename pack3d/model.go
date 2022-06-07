@@ -43,13 +43,13 @@ type Undo struct {
 type Item struct {
 	Mesh               *fauxgl.Mesh
 	Trees              []Tree // struc tree -> []Box, struc Box -> {min, max} vector
-	Rotation           int    // index of a rotation within Rotations.
+	RotationId         int    // index of a rotation within Rotations.
 	Translation        fauxgl.Vector
 	AvailableRotations []fauxgl.Matrix
 }
 
 func (item *Item) Matrix() fauxgl.Matrix {
-	return item.AvailableRotations[item.Rotation].Translate(item.Translation)
+	return item.AvailableRotations[item.RotationId].Translate(item.Translation)
 }
 
 func (item *Item) Copy() *Item {
@@ -86,7 +86,7 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree, rotations []fauxgl.Matrix) 
 	m.Items = append(m.Items, &item)
 	d := 1.0
 	for !m.ValidChange(index) {
-		item.Rotation = rand.Intn(len(rotations))
+		item.RotationId = rand.Intn(len(rotations))
 
 		item.Translation = fauxgl.RandomUnitVector().MulScalar(d)
 		d *= 1.2
@@ -144,7 +144,7 @@ func (m *Model) TreeMeshes() []*fauxgl.Mesh {
 	result := make([]*fauxgl.Mesh, len(m.Items))
 	for i, item := range m.Items {
 		mesh := fauxgl.NewEmptyMesh()
-		tree := item.Trees[item.Rotation]
+		tree := item.Trees[item.RotationId]
 		for _, box := range tree[len(tree)/2:] {
 			mesh.Add(fauxgl.NewCubeForBox(box))
 		}
@@ -165,13 +165,13 @@ func (m *Model) TreeMesh() *fauxgl.Mesh {
 /* This function is to make sure no intersection between objects*/
 func (m *Model) ValidChange(i int) bool {
 	item1 := m.Items[i]
-	tree1 := item1.Trees[item1.Rotation]
+	tree1 := item1.Trees[item1.RotationId]
 	for j := 0; j < len(m.Items); j++ { // go through all other items
 		if j == i {
 			continue
 		}
 		item2 := m.Items[j]
-		tree2 := item2.Trees[item2.Rotation]
+		tree2 := item2.Trees[item2.RotationId]
 		if tree1.Intersects(tree2, item1.Translation, item2.Translation) {
 			return false
 		}
@@ -214,7 +214,7 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 func (m *Model) BoundingBox() fauxgl.Box {
 	box := fauxgl.EmptyBox
 	for _, item := range m.Items {
-		tree := item.Trees[item.Rotation]
+		tree := item.Trees[item.RotationId]
 		box = box.Extend(tree[0].Translate(item.Translation))
 	}
 	return box
@@ -231,13 +231,13 @@ func (m *Model) Energy() float64 {
 func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (Undo, int) {
 	i := rand.Intn(packItemNum) // choose a random index in models
 	item := m.Items[i]          // single model
-	undo := Undo{i, item.Rotation, item.Translation}
+	undo := Undo{i, item.RotationId, item.Translation}
 	j := 0
 	for {
 		j += 1
 		if rand.Intn(4) == 0 {
 			// rotate, 1/4 of probability
-			item.Rotation = rand.Intn(len(item.AvailableRotations)) // do a random rotation, it's a random index
+			item.RotationId = rand.Intn(len(item.AvailableRotations)) // do a random rotation, it's a random index
 		} else {
 			// translate, 3/4 of probability
 			offset := Axis(rand.Intn(3) + 1).Vector()                   // Pick a random axis
@@ -249,7 +249,7 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 			break
 		}
 
-		item.Rotation = undo.Rotation
+		item.RotationId = undo.Rotation
 		item.Translation = undo.Translation
 		if j >= 100 {
 			break
@@ -261,7 +261,7 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 
 func (m *Model) UndoMove(undo Undo) {
 	item := m.Items[undo.Index]
-	item.Rotation = undo.Rotation
+	item.RotationId = undo.Rotation
 	item.Translation = undo.Translation
 }
 
