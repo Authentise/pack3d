@@ -70,19 +70,19 @@ func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
 
 	manufacturingRotation := fauxgl.Identity()
 	if item.AxesLock.ThetaX != nil {
-		axis_x := pack3d.AxisX.Vector() // x axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_x, fauxgl.Radians(*item.AxesLock.ThetaX))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_x, pack3d.AxisZ.Vector())
+		axisX := pack3d.AxisX.Vector() // x axis
+		manufacturingRotation = manufacturingRotation.Rotate(axisX, fauxgl.Radians(*item.AxesLock.ThetaX))
+		manufacturingRotation = manufacturingRotation.RotateTo(axisX, pack3d.AxisZ.Vector())
 	}
 	if item.AxesLock.ThetaY != nil {
-		axis_y := pack3d.AxisY.Vector() // y axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_y, fauxgl.Radians(*item.AxesLock.ThetaY))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_y, pack3d.AxisZ.Vector())
+		axisY := pack3d.AxisY.Vector() // y axis
+		manufacturingRotation = manufacturingRotation.Rotate(axisY, fauxgl.Radians(*item.AxesLock.ThetaY))
+		manufacturingRotation = manufacturingRotation.RotateTo(axisY, pack3d.AxisZ.Vector())
 	}
 	if item.AxesLock.ThetaZ != nil {
-		axis_z := pack3d.AxisZ.Vector() // z axis
-		manufacturingRotation = manufacturingRotation.Rotate(axis_z, fauxgl.Radians(*item.AxesLock.ThetaZ))
-		manufacturingRotation = manufacturingRotation.RotateTo(axis_z, pack3d.AxisZ.Vector())
+		axisZ := pack3d.AxisZ.Vector() // z axis
+		manufacturingRotation = manufacturingRotation.Rotate(axisZ, fauxgl.Radians(*item.AxesLock.ThetaZ))
+		manufacturingRotation = manufacturingRotation.RotateTo(axisZ, pack3d.AxisZ.Vector())
 	}
 	return manufacturingRotation
 }
@@ -290,7 +290,7 @@ func main() {
 
 	minItemNum := 0
 	packItemNum := maxItemNum
-	success_model := pack3d.NewModel()
+	successModel := pack3d.NewModel()
 
 	for {
 		model, ntime = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
@@ -312,7 +312,7 @@ func main() {
 				fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 				fmt.Println("-----------------------------------")
 				maxItemNum = packItemNum - 1
-				packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum)) / 2))
+				packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
 
 				model.Reset()
 				model.Transformation()[packItemNum] = null
@@ -344,8 +344,8 @@ func main() {
 		fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 		fmt.Println("-----------------------------------------")
 		minItemNum = packItemNum + 1
-		packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum)) / 2))
-		success_model = model
+		packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
+		successModel = model
 		start = time.Now()
 
 		if minItemNum > maxItemNum {
@@ -359,12 +359,12 @@ func main() {
 		transMatrix    [4][4]float64
 		fillPercentage float64
 	)
-	transformation := success_model.Transformation()
+	transformation := successModel.Transformation()
 
 	// The scaling is applied directly in main.go and this is not ideal in terms of
 	// modularisation but for the sake of time it had to be squished in here.
 	// Tech debt: extract the scaling from main.go.
-	for j := 0; j < len(success_model.Items); j++ {
+	for j := 0; j < len(successModel.Items); j++ {
 		copack, ok := coPackMap[srcStlNames[j]]
 		if !ok {
 
@@ -409,16 +409,16 @@ func main() {
 			}
 		}
 	}
-	positions_json, err := json.Marshal(transMaps)
+	positionsJson, err := json.Marshal(transMaps)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 	fmt.Println("the fill percentage is:", fillPercentage)
-	ioutil.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positions_json, 0644)
-	// os.Stdout.Write(positions_json)
+	ioutil.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positionsJson, 0644)
+	// os.Stdout.Write(positionsJson)
 
 	// STL file is no longer created, results returned as JSON for separate packer.
-	// Unblock the following line if want to generate the packing STL
+	// Unblock the following line if want to generate the packing STL. This is typically done only for debugging.
 	model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
 	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
