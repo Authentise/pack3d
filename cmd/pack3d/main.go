@@ -92,7 +92,7 @@ func main() {
 	fileNameArg := flag.String("output_packing_json_filename", "pack3d", "export filename")
 	flag.Parse()
 
-	if versionArg := os.Args[1]; versionArg == "--version" {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
 		fmt.Println("Pack3d 1.5.0")
 		return
 	}
