@@ -40,16 +40,16 @@ func timed(name string) func() {
 	}
 }
 
-func Rotations(item Item) []fauxgl.Matrix {
-	availableRotations := make([]faugl.Matrix, 0)
-	if item.AxesLock.ThetaX == nil {
-		availableRotations = append(availableRotations, AxisXRotations...)
+func getPossibleRotations(axesLock *AxesLock) []fauxgl.Matrix {
+	availableRotations := make([]fauxgl.Matrix, 0)
+	if axesLock.ThetaX == nil {
+		availableRotations = append(availableRotations, pack3d.AxisXRotations...)
 	}
-	if item.AxesLock.ThetaY == nil {
-		availableRotations = append(availableRotations, AxisYRotations...)
+	if axesLock.ThetaY == nil {
+		availableRotations = append(availableRotations, pack3d.AxisYRotations...)
 	}
-	if item.AxesLock.ThetaZ == nil {
-		availableRotations = append(availableRotations, AxisZRotations...)
+	if axesLock.ThetaZ == nil {
+		availableRotations = append(availableRotations, pack3d.AxisZRotations...)
 	}
 
 	return availableRotations
@@ -255,7 +255,7 @@ func main() {
 
 		done = timed("building bvh tree")
 
-		model.Add(mesh, bvhDetail, item.Count, spacing, Rotations)
+		model.Add(mesh, bvhDetail, item.Count, spacing, getPossibleRotations(item.AxesLock))
 		ok = true
 		done()
 
