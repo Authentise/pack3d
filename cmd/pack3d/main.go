@@ -59,6 +59,10 @@ func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
 	if axesLock.ThetaZ == nil {
 		availableRotations = append(availableRotations, pack3d.AxisZRotations...)
 	}
+	// the function needs to return at least one dummy rotation (the identity matrix).
+	if len(availableRotations) == 0 {
+		availableRotations = append(availableRotations, fauxgl.Identity())
+	}
 	return availableRotations
 }
 
