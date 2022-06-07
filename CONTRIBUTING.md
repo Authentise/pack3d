@@ -2,7 +2,7 @@
 
 ## Ensure that Go is installed on your machine:
 
-`https://go.dev/doc/install`
+https://go.dev/doc/install
 
 
 ## Download dependencies:
@@ -10,10 +10,10 @@
 go mod download
 ```
 
-## Run pack3 locally:
+## Run pack3d locally:
 
 ```
-`go run ./cmd/pack3d/main.go --input_config_json_filename=tests/ch32838_test/input.json --output_packing_json_filename=tests/ch32838_test/output/output`
+go run ./cmd/pack3d/main.go --input_config_json_filename=... --output_packing_json_filename=...
 ```
 
 ## Build binary for production:
