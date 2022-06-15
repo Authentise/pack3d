@@ -1,6 +1,6 @@
 module github.com/Authentise/pack3d
 
-go 1.18
+go 1.16
 
 require (
 	github.com/fogleman/fauxgl v0.0.0-20200818143847-27cddc103802
