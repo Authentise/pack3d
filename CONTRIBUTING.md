@@ -19,7 +19,7 @@ go run ./cmd/pack3d/main.go --input_config_json_filename=... --output_packing_js
 ## Build binary for production:
 
 ```
-cd cmd/pack3d; env GOOS=linux GOARCH=amd64 go build -o ../../bin; cd ../..
+cd cmd/pack3d; env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../../bin; cd ../..
 ```
 
 This will create a binary called `pack3d` in the `/bin` directory
