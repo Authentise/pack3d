@@ -126,7 +126,7 @@ func main() {
 		scaleStl      []fauxgl.Matrix
 		done          func()
 		totalVolume   float64
-		ntime         int
+		iterations    int
 		srcStlNames   []string
 		transMaps     []TransMap
 	)
@@ -298,11 +298,11 @@ func main() {
 	successModel := pack3d.NewModel()
 
 	for {
-		model, ntime = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
+		model, iterations = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
 		/* ntime is the times of trial to find a output solution, if after trying for 100 times
 		and no solution is found, then reset the model and try again. Usually if there is a solution,
 		ntime will be 1 or 2 for most cases. */
-		if ntime >= 100 {
+		if iterations >= 100 {
 			/* There is a case that even I reset the model for many times, I still can't find a solution,
 			In this case, I need to set a threshold (20 second) to stop the software*/
 			if time.Since(start).Seconds() <= timeLimit {
