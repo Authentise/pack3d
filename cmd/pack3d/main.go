@@ -317,7 +317,7 @@ func main() {
 				fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 				fmt.Println("-----------------------------------")
 				maxItemNum = packItemNum - 1
-				packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
+				packItemNum = (maxItemNum + minItemNum) / 2
 
 				model.Reset()
 				model.Transformation()[packItemNum] = null
@@ -349,7 +349,7 @@ func main() {
 		fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 		fmt.Println("-----------------------------------------")
 		minItemNum = packItemNum + 1
-		packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
+		packItemNum = (maxItemNum + minItemNum) / 2
 		successModel = model
 		start = time.Now()
 
