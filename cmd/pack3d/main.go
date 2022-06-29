@@ -122,13 +122,14 @@ func main() {
 	}
 
 	var (
-		singleStlSize []fauxgl.Vector
-		scaleStl      []fauxgl.Matrix
-		done          func()
-		totalVolume   float64
-		iterations    int
-		srcStlNames   []string
-		transMaps     []TransMap
+		singleStlSize  []fauxgl.Vector
+		scaleStl       []fauxgl.Matrix
+		mfgRotationStl []fauxgl.Matrix
+		done           func()
+		totalVolume    float64
+		ntime          int
+		srcStlNames    []string
+		transMaps      []TransMap
 	)
 
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -136,6 +137,7 @@ func main() {
 	model := pack3d.NewModel()
 	scale := 1.0
 	var scaleMatrix fauxgl.Matrix
+	var mfgRotationMatrix fauxgl.Matrix
 	var ok bool
 
 	spacing := config.Spacing / 2.0
@@ -171,16 +173,18 @@ func main() {
 				done()
 			}
 
-			// apply specified manufacturing rotation from given theta values.
+			// Mesh's manufacturing rotation.
 			// Note: do not confuse manufacturing orientation with packing orientation.
-			mesh.Transform(getManufacturingOrientation(item))
+			mfgRotationMatrix = getManufacturingOrientation(item)
+			mesh.Transform(mfgRotationMatrix)
 
-			// update arrays.
+			// update all the copies.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
 				srcStlNames = append(srcStlNames, item.Filename)
 				scaleStl = append(scaleStl, scaleMatrix)
+				mfgRotationStl = append(mfgRotationStl, mfgRotationMatrix)
 			}
 
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
@@ -196,7 +200,7 @@ func main() {
 
 			coPackMap[item.Filename] = item.Copack
 
-			// load and scale the main co-packing mesh.
+			// 1. load and scale the main co-packing mesh.
 			done = timed(fmt.Sprintf("loading main co-packing mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
@@ -204,8 +208,8 @@ func main() {
 			}
 			done()
 
-			// main co-packing mesh's scaling. If scaling is to be applied, it is
-			// done before the computation of the BoundingBox and volume.
+			// 2. main co-packing mesh's scaling. If scaling is to be applied, it is
+			//    done before the computation of the BoundingBox and volume.
 			scale = item.Scale
 			scaleMatrix = fauxgl.Scale(fauxgl.V(scale, scale, scale))
 			if scale != 1.0 {
@@ -214,7 +218,16 @@ func main() {
 				done()
 			}
 
-			// load and scale the co-packed meshes.
+			// Mesh's manufacturing rotation.
+			// This is done before the computation of the BoundingBox and volume.
+			// Note: do not confuse manufacturing orientation with packing orientation.
+			mfgRotationMatrix = getManufacturingOrientation(item)
+			mesh.Transform(mfgRotationMatrix)
+
+			// 3. load and scale/mfg_rotate the co-packed meshes.
+			// Tech Debt: investigate whether step 3 (this one) can be moved before step 1,
+			//            and avoiding applying coMesh.Transform(scaleMatrix) and
+			//            coMesh.Transform(mfgRotationMatrix) below here as a consequence.
 			for _, cp := range item.Copack {
 
 				done = timed(fmt.Sprintf("loading co-packed mesh %s", cp.Filename))
@@ -224,11 +237,13 @@ func main() {
 				}
 				done()
 
-				// IMPORTANT: cp.Scale is ignored. The main co-packing
-				// mesh's scale is applied to all of its co-packed objects.
+				// IMPORTANT: cp.Scale and cp's mfg rotations are ignored.
+				//            The main co-packing mesh's scale and the mfg rotation
+				//            will be applied to all of its co-packed meshes.
 				if scale != 1.0 {
 					done = timed("scaling main co-packing mesh")
 					coMesh.Transform(scaleMatrix)
+					coMesh.Transform(mfgRotationMatrix)
 					done()
 				}
 
@@ -236,16 +251,13 @@ func main() {
 				mesh.Add(coMesh)
 			}
 
-			// apply specified manufacturing rotation from given theta values.
-			// Note: do not confuse manufacturing orientation with packing orientation.
-			mesh.Transform(getManufacturingOrientation(item))
-
-			// update arrays with the main co-packing mesh's data for the json output.
+			// 4. update all the copies with the main co-packing mesh's data for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
 				srcStlNames = append(srcStlNames, item.Filename)
 				scaleStl = append(scaleStl, scaleMatrix)
+				mfgRotationStl = append(mfgRotationStl, mfgRotationMatrix)
 			}
 
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
@@ -279,7 +291,7 @@ func main() {
 	model.Deviation = side / 32 //it is not the distance between objects. And it seems that it will not reflect the distance.
 
 	/*  Mesh packing loop. This loop is to find the best STL mesh packing.
-	Add 'break' in the loop to stop program */
+	    Add 'break' in the loop to stop program */
 	start := time.Now()
 	maxItemNum := len(model.Items)
 	var timeLimit float64
@@ -298,13 +310,13 @@ func main() {
 	successModel := pack3d.NewModel()
 
 	for {
-		model, iterations = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
+		model, ntime = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
 		/* ntime is the times of trial to find a output solution, if after trying for 100 times
-		and no solution is found, then reset the model and try again. Usually if there is a solution,
-		ntime will be 1 or 2 for most cases. */
-		if iterations >= 100 {
+		   and no solution is found, then reset the model and try again. Usually if there is a solution,
+		   ntime will be 1 or 2 for most cases. */
+		if ntime >= 100 {
 			/* There is a case that even I reset the model for many times, I still can't find a solution,
-			In this case, I need to set a threshold (20 second) to stop the software*/
+			   In this case, I need to set a threshold (20 second) to stop the software*/
 			if time.Since(start).Seconds() <= timeLimit {
 				model.Reset()
 				continue
@@ -317,7 +329,7 @@ func main() {
 				fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 				fmt.Println("-----------------------------------")
 				maxItemNum = packItemNum - 1
-				packItemNum = (maxItemNum + minItemNum) / 2
+				packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
 
 				model.Reset()
 				model.Transformation()[packItemNum] = null
@@ -349,7 +361,7 @@ func main() {
 		fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 		fmt.Println("-----------------------------------------")
 		minItemNum = packItemNum + 1
-		packItemNum = (maxItemNum + minItemNum) / 2
+		packItemNum = int(math.Ceil(float64(maxItemNum+minItemNum) / 2))
 		successModel = model
 		start = time.Now()
 
@@ -374,13 +386,25 @@ func main() {
 		if !ok {
 
 			t := transformation[j]
-			st := t.Mul(scaleStl[j]) // scaled transformation for the j-th mesh.
+			rt := t.Mul(mfgRotationStl[j]) // manufacturing rotation for the j-th mesh.
+			st := rt.Mul(scaleStl[j])      // scaled transformation for the j-th mesh.
+
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
-				transMatrix = [4][4]float64{{st.X00, st.X01, st.X02, st.X03}, {st.X10, st.X11, st.X12, st.X13}, {st.X20, st.X21, st.X22, st.X23}, {st.X30, st.X31, st.X32, st.X33}}
+				transMatrix = [4][4]float64{
+					{st.X00, st.X01, st.X02, st.X03},
+					{st.X10, st.X11, st.X12, st.X13},
+					{st.X20, st.X21, st.X22, st.X23},
+					{st.X30, st.X31, st.X32, st.X33},
+				}
 			} else {
-				transMatrix = [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
+				transMatrix = [4][4]float64{
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+				}
 			}
 
 			// buildVolume's filling percentage.
@@ -391,13 +415,24 @@ func main() {
 		} else {
 
 			t := transformation[j]
-			st := t.Mul(scaleStl[j]) // scaled transformation for the j-th mesh.
+			rt := t.Mul(mfgRotationStl[j]) // manufacturing rotation for the j-th mesh.
+			st := rt.Mul(scaleStl[j])      // scaled transformation for the j-th mesh.
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
-				transMatrix = [4][4]float64{{st.X00, st.X01, st.X02, st.X03}, {st.X10, st.X11, st.X12, st.X13}, {st.X20, st.X21, st.X22, st.X23}, {st.X30, st.X31, st.X32, st.X33}}
+				transMatrix = [4][4]float64{
+					{st.X00, st.X01, st.X02, st.X03},
+					{st.X10, st.X11, st.X12, st.X13},
+					{st.X20, st.X21, st.X22, st.X23},
+					{st.X30, st.X31, st.X32, st.X33},
+				}
 			} else {
-				transMatrix = [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
+				transMatrix = [4][4]float64{
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+				}
 			}
 
 			// buildVolume's filling percentage.
