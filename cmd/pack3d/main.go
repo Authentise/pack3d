@@ -148,7 +148,10 @@ func main() {
 	//fmt.Println(frameSize)
 
 	/* Loading stl models */
-	coPackMap := make(map[string][]*Copack) // object to record co-packed meshes.
+
+	// Tech Debt: there's unnecessary repetition of code inside the if-statement below.
+
+	coPackMap := make(map[string][]*Copack) // variable that contains co-packed mesh's data.
 	for _, item := range config.ConfigItems {
 
 		var mesh *fauxgl.Mesh
@@ -156,6 +159,7 @@ func main() {
 
 		if item.Copack == nil {
 
+			// 1. load the mesh.
 			done = timed(fmt.Sprintf("loading mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
@@ -163,8 +167,9 @@ func main() {
 			}
 			done()
 
-			// Mesh's scaling. If scaling is to be applied, it is
-			// done before the computation of the BoundingBox and volume.
+			// 2. apply the scaling to the mesh.
+			//    Notice that if scaling is to be applied, it is done
+			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
 			scaleMatrix = fauxgl.Scale(fauxgl.V(scale, scale, scale))
 			if scale != 1.0 {
@@ -173,12 +178,14 @@ func main() {
 				done()
 			}
 
-			// Mesh's manufacturing rotation.
-			// Note: do not confuse manufacturing orientation with packing orientation.
+			// 3. apply the manufacturing rotation mesh.
+			//    Notice that this is done before the computation of the BoundingBox and volume.
+			// IMPORTANT: do not confuse manufacturing orientation with the packing
+			//            orientations from the orientations provided by the annealing further on.
 			mfgRotationMatrix = getManufacturingOrientation(item)
 			mesh.Transform(mfgRotationMatrix)
 
-			// update all the copies.
+			// 4. update all the copies mesh for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
@@ -190,26 +197,43 @@ func main() {
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
+			// 5. mesh centering.
 			done = timed("centering mesh")
 			mesh.Center()
 			done()
 
+			// 6. coarse approx for the volume.
 			totalVolume += mesh.BoundingBox().Volume()
 
 		} else {
 
 			coPackMap[item.Filename] = item.Copack
 
-			// 1. load and scale the main co-packing mesh.
-			done = timed(fmt.Sprintf("loading main co-packing mesh %s", item.Filename))
+			// 1a. load the main co-packing mesh (the "parent" co-packing mesh, so to say).
+			done = timed(fmt.Sprintf("loading the main co-packing mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
 				panic(err)
 			}
 			done()
 
-			// 2. main co-packing mesh's scaling. If scaling is to be applied, it is
-			//    done before the computation of the BoundingBox and volume.
+			// 1b. load the co-packed meshes (the "children" of the "parent" co-packing mesh, so to say).
+			for _, cp := range item.Copack {
+
+				done = timed(fmt.Sprintf("loading the co-packed mesh %s", cp.Filename))
+				coMesh, err := fauxgl.LoadMesh(cp.Filename)
+				if err != nil {
+					panic(err)
+				}
+				done()
+
+				// add coMesh to the main mesh. The "child"'s mesh is merged into its parent's.
+				mesh.Add(coMesh)
+			}
+
+			// 2. apply the scaling to the parent co-packing mesh (and implicitly its children).
+			//    Notice that if scaling is to be applied, it is done
+			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
 			scaleMatrix = fauxgl.Scale(fauxgl.V(scale, scale, scale))
 			if scale != 1.0 {
@@ -218,40 +242,15 @@ func main() {
 				done()
 			}
 
-			// Mesh's manufacturing rotation.
-			// This is done before the computation of the BoundingBox and volume.
-			// Note: do not confuse manufacturing orientation with packing orientation.
+			// 3. apply the manufacturing rotation to the parent co-packing mesh (and implicitly its children).
+			//    Notice that this is done before the computation of the BoundingBox and volume.
+			// IMPORTANT: do not confuse manufacturing orientation with the packing
+			//            orientations from the orientations provided by the annealing further on.
 			mfgRotationMatrix = getManufacturingOrientation(item)
 			mesh.Transform(mfgRotationMatrix)
 
-			// 3. load and scale/mfg_rotate the co-packed meshes.
-			// Tech Debt: investigate whether step 3 (this one) can be moved before step 1,
-			//            and avoiding applying coMesh.Transform(scaleMatrix) and
-			//            coMesh.Transform(mfgRotationMatrix) below here as a consequence.
-			for _, cp := range item.Copack {
-
-				done = timed(fmt.Sprintf("loading co-packed mesh %s", cp.Filename))
-				coMesh, err := fauxgl.LoadMesh(cp.Filename)
-				if err != nil {
-					panic(err)
-				}
-				done()
-
-				// IMPORTANT: cp.Scale and cp's mfg rotations are ignored.
-				//            The main co-packing mesh's scale and the mfg rotation
-				//            will be applied to all of its co-packed meshes.
-				if scale != 1.0 {
-					done = timed("scaling main co-packing mesh")
-					coMesh.Transform(scaleMatrix)
-					coMesh.Transform(mfgRotationMatrix)
-					done()
-				}
-
-				// add coMesh to the main mesh.
-				mesh.Add(coMesh)
-			}
-
-			// 4. update all the copies with the main co-packing mesh's data for the json output.
+			// 4. update all the copies of the parent co-packing mesh
+			//    (and implicitly its children) for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
@@ -263,10 +262,12 @@ func main() {
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
+			// 5. mesh centering.
 			done = timed("centering co-packed mesh")
 			mesh.Center()
 			done()
 
+			// 6. coarse approx for the volume.
 			totalVolume += mesh.BoundingBox().Volume()
 		}
 
@@ -459,7 +460,7 @@ func main() {
 
 	// STL file is no longer created, results returned as JSON for separate packer.
 	// Unblock the following line if want to generate the packing STL. This is typically done only for debugging.
-	model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
+	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
 	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
 }
