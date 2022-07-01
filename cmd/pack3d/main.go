@@ -167,7 +167,10 @@ func main() {
 			}
 			done()
 
-			// 2. apply the scaling to the mesh.
+			// 2. mesh centering.
+			mesh.Center()
+
+			// 3. apply the scaling to the mesh.
 			//    Notice that if scaling is to be applied, it is done
 			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
@@ -178,14 +181,14 @@ func main() {
 				done()
 			}
 
-			// 3. apply the manufacturing rotation mesh.
+			// 4. apply the manufacturing rotation mesh.
 			//    Notice that this is done before the computation of the BoundingBox and volume.
 			// IMPORTANT: do not confuse manufacturing orientation with the packing
 			//            orientations from the orientations provided by the annealing further on.
 			mfgRotationMatrix = getManufacturingOrientation(item)
 			mesh.Transform(mfgRotationMatrix)
 
-			// 4. update all the copies mesh for the json output.
+			// 5. update all the copies mesh for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
@@ -197,12 +200,7 @@ func main() {
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
-			// 5. mesh centering.
-			done = timed("centering mesh")
-			mesh.Center()
-			done()
-
-			// 6. coarse approx for the volume.
+			// 6. coarse approx of its volume.
 			totalVolume += mesh.BoundingBox().Volume()
 
 		} else {
@@ -231,7 +229,12 @@ func main() {
 				mesh.Add(coMesh)
 			}
 
-			// 2. apply the scaling to the parent co-packing mesh (and implicitly its children).
+			// 2. mesh centering.
+			done = timed("centering co-packed mesh")
+			mesh.Center()
+			done()
+
+			// 3. apply the scaling to the parent co-packing mesh (and implicitly its children).
 			//    Notice that if scaling is to be applied, it is done
 			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
@@ -242,14 +245,14 @@ func main() {
 				done()
 			}
 
-			// 3. apply the manufacturing rotation to the parent co-packing mesh (and implicitly its children).
+			// 4. apply the manufacturing rotation to the parent co-packing mesh (and implicitly its children).
 			//    Notice that this is done before the computation of the BoundingBox and volume.
 			// IMPORTANT: do not confuse manufacturing orientation with the packing
 			//            orientations from the orientations provided by the annealing further on.
 			mfgRotationMatrix = getManufacturingOrientation(item)
 			mesh.Transform(mfgRotationMatrix)
 
-			// 4. update all the copies of the parent co-packing mesh
+			// 5. update all the copies of the parent co-packing mesh
 			//    (and implicitly its children) for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
@@ -262,12 +265,7 @@ func main() {
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
-			// 5. mesh centering.
-			done = timed("centering co-packed mesh")
-			mesh.Center()
-			done()
-
-			// 6. coarse approx for the volume.
+			// 6. coarse approx of its volume.
 			totalVolume += mesh.BoundingBox().Volume()
 		}
 
@@ -459,8 +457,9 @@ func main() {
 	// os.Stdout.Write(positionsJson)
 
 	// STL file is no longer created, results returned as JSON for separate packer.
-	// Unblock the following line if want to generate the packing STL. This is typically done only for debugging.
-	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
+	// Unblock on of the following lines to generate the packing STL file. This is typically done only for debugging purposes.
+	// model.Mesh().SaveSTL(fmt.Sprintf("pack3d_debug_test.stl")) // store the STL file in the main Nautilus folder.
+	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))  // store the STL file next to the json file.
 	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
 }
