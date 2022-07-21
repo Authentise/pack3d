@@ -10,7 +10,12 @@
                 {
                     "filename": "tests/jenkins_tests/corner.stl"
                 }
-            ]
+            ],
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
         },
         {
             "filename": "tests/jenkins_tests/logo.stl",
@@ -20,17 +25,32 @@
                 {
                     "filename": "tests/jenkins_tests/corner.stl"
                 }
-            ]
+            ],
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
         },
         {
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 2,
-            "scale": 4.0
+            "scale": 4.0,
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
         },
         {
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 5,
-            "scale": 1.0
+            "scale": 1.0,
+            "axes_lock": {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
         }
     ]
 }

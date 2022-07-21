@@ -1,0 +1,122 @@
+{
+    "build_volume":
+    [
+        400.0,
+        400.0,
+        400.0
+    ],
+    "spacing": 5.0,
+    "items":
+    [
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/shocks.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": 0.1,
+                "theta_y": -19,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        },
+        {
+            "count": 1,
+            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "scale": 1.0,
+            "axes_lock":
+            {
+                "theta_x": null,
+                "theta_y": null,
+                "theta_z": null
+            }
+        }
+    ]
+}

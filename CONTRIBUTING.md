@@ -1,3 +1,30 @@
+# Go module workflow (preferrable)
+
+## Ensure that Go is installed on your machine:
+
+https://go.dev/doc/install
+
+
+## Download dependencies:
+```
+go mod download
+```
+
+## Run pack3d locally:
+
+```
+go run ./cmd/pack3d/main.go --input_config_json_filename=... --output_packing_json_filename=...
+```
+
+## Build binary for production:
+
+```
+cd cmd/pack3d; env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../../bin; cd ../..
+```
+
+This will create a binary called `pack3d` in the `/bin` directory
+
+
 # pack3d - Installation, Codebase, Development and Deployment
 
 The Go Development can be carried out straight into the Nautilus container, same as for the Python development. There are a few ways to compile/run that Go code:

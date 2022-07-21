@@ -40,12 +40,62 @@ func timed(name string) func() {
 	}
 }
 
+func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
+	// This function returns only the available rotations
+	// which depend on the unlocked axes provided by the user.
+	// An unlocked axis is characterised by a `nil` theta angle.
+	// Setting a theta angle with a Float instead means that
+	// that rotation axis is locked to a specific angle.
+
+	// Tech debt: this function should probably be moved into model.go
+
+	availableRotations := make([]fauxgl.Matrix, 0)
+	if axesLock.ThetaX == nil {
+		availableRotations = append(availableRotations, pack3d.AxisXRotations...)
+	}
+	if axesLock.ThetaY == nil {
+		availableRotations = append(availableRotations, pack3d.AxisYRotations...)
+	}
+	if axesLock.ThetaZ == nil {
+		availableRotations = append(availableRotations, pack3d.AxisZRotations...)
+	}
+	// the function needs to return at least one dummy rotation (the identity matrix).
+	if len(availableRotations) == 0 {
+		availableRotations = append(availableRotations, fauxgl.Identity())
+	}
+	return availableRotations
+}
+
+func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
+	// This function's purpose is to create a composite rotation matrix from the three provided angles.
+
+	// Tech debt: this function might need to be moved into a function in fauxgl.mesh.
+
+	// NOTE: The THREE.Euler's rotation order (in Rapidfab) has been set as 'ZYX' to match Blender's rotation order
+	//       and pack3d "seems" to be the same order of rotation but with the "minus" sign for all three angles.
+	//       e.g.: -fauxgl.Radians(*item.AxesLock.ThetaX)
+	mfgRotationMtx := fauxgl.Identity()
+	if item.AxesLock.ThetaX != nil {
+		axisX := pack3d.AxisX.Vector() // x axis
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisX, -fauxgl.Radians(*item.AxesLock.ThetaX))
+	}
+	if item.AxesLock.ThetaY != nil {
+		axisY := pack3d.AxisY.Vector() // y axis
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisY, -fauxgl.Radians(*item.AxesLock.ThetaY))
+	}
+	if item.AxesLock.ThetaZ != nil {
+		axisZ := pack3d.AxisZ.Vector() // z axis
+		mfgRotationMtx = mfgRotationMtx.Rotate(axisZ, -fauxgl.Radians(*item.AxesLock.ThetaZ))
+	}
+	return mfgRotationMtx
+}
+
 func main() {
-	var jsonFileArg = flag.String("input_config_json_filename", "", "json config file")
-	var fileNameArg = flag.String("output_packing_json_filename", "pack3d", "export filename")
+	jsonFileArg := flag.String("input_config_json_filename", "", "json config file")
+	fileNameArg := flag.String("output_packing_json_filename", "pack3d", "export filename")
 	flag.Parse()
 
-	if os.Args[1] == "--version" {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
 		fmt.Println("Pack3d 1.5.0")
 		return
 	}
@@ -69,26 +119,24 @@ func main() {
 		VolumeWithSpacing float64
 	}
 
-	type err_msg struct {
-		Error string
-	}
-
 	var (
-		singleStlSize []fauxgl.Vector
-		scaleStl      []fauxgl.Matrix
-		done          func()
-		totalVolume   float64
-		ntime         int
-		srcStlNames   []string
-		transMaps     []TransMap
+		singleStlSize  []fauxgl.Vector
+		scaleStl       []fauxgl.Matrix
+		mfgRotationStl []fauxgl.Matrix
+		done           func()
+		totalVolume    float64
+		iterations     int
+		srcStlNames    []string
+		transMaps      []TransMap
 	)
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	model := pack3d.NewModel()
 	scale := 1.0
-	scaleMatrix := fauxgl.Matrix{}
-	ok := false
+	var scaleMatrix fauxgl.Matrix
+	var mfgRotationMatrix fauxgl.Matrix
+	var ok bool
 
 	spacing := config.Spacing / 2.0
 
@@ -98,14 +146,18 @@ func main() {
 	//fmt.Println(frameSize)
 
 	/* Loading stl models */
-	coPackMap := make(map[string][]*Copack)  // object to record co-packed meshes.
-	for _, item := range config.Items {
+
+	// Tech Debt: there's unnecessary repetition of code inside the if-statement below.
+
+	coPackMap := make(map[string][]*Copack) // variable that contains co-packed mesh's data.
+	for _, item := range config.ConfigItems {
 
 		var mesh *fauxgl.Mesh
 		var err error
 
 		if item.Copack == nil {
 
+			// 1. load the mesh.
 			done = timed(fmt.Sprintf("loading mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
@@ -113,8 +165,12 @@ func main() {
 			}
 			done()
 
-			// Mesh's scaling. If scaling is to be applied, it is
-			// done before the computation of the BoundingBox and volume.
+			// 2. mesh centering.
+			mesh.Center()
+
+			// 3. apply the scaling to the mesh.
+			//    Notice that if scaling is to be applied, it is done
+			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
 			scaleMatrix = fauxgl.Scale(fauxgl.V(scale, scale, scale))
 			if scale != 1.0 {
@@ -123,37 +179,62 @@ func main() {
 				done()
 			}
 
-			// update arrays.
+			// 4. apply the manufacturing rotation mesh.
+			//    Notice that this is done before the computation of the BoundingBox and volume.
+			// IMPORTANT: do not confuse manufacturing orientation with the packing
+			//            orientations from the orientations provided by the annealing further on.
+			mfgRotationMatrix = getManufacturingOrientation(item)
+			mesh.Transform(mfgRotationMatrix)
+
+			// 5. update all the copies mesh for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
 				srcStlNames = append(srcStlNames, item.Filename)
 				scaleStl = append(scaleStl, scaleMatrix)
+				mfgRotationStl = append(mfgRotationStl, mfgRotationMatrix)
 			}
 
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
-			done = timed("centering mesh")
-			mesh.Center()
-			done()
-
+			// 6. coarse approx of its volume.
 			totalVolume += mesh.BoundingBox().Volume()
 
 		} else {
 
 			coPackMap[item.Filename] = item.Copack
 
-			// load and scale the main co-packing mesh.
-			done = timed(fmt.Sprintf("loading main co-packing mesh %s", item.Filename))
+			// 1a. load the main co-packing mesh (the "parent" co-packing mesh, so to say).
+			done = timed(fmt.Sprintf("loading the main co-packing mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
 				panic(err)
 			}
 			done()
 
-			// main co-packing mesh's scaling. If scaling is to be applied, it is
-			// done before the computation of the BoundingBox and volume.
+			// 1b. load the co-packed meshes (the "children" of the "parent" co-packing mesh, so to say).
+			for _, cp := range item.Copack {
+
+				done = timed(fmt.Sprintf("loading the co-packed mesh %s", cp.Filename))
+				coMesh, err := fauxgl.LoadMesh(cp.Filename)
+				if err != nil {
+					panic(err)
+				}
+				done()
+
+				// add coMesh to the main mesh. The "child"'s mesh is merged into its parent's.
+				mesh.Add(coMesh)
+			}
+
+			// 2. mesh centering.
+			done = timed("centering co-packed mesh")
+			mesh.Center()
+			done()
+
+			// 3. apply the scaling to the parent co-packing mesh (and implicitly its children).
+			//    Notice that if scaling is to be applied, it is done
+			//    before the computation of the BoundingBox and volume.
 			scale = item.Scale
 			scaleMatrix = fauxgl.Scale(fauxgl.V(scale, scale, scale))
 			if scale != 1.0 {
@@ -162,49 +243,33 @@ func main() {
 				done()
 			}
 
-			// load and scale the co-packed meshes.
-			for _, cp := range item.Copack {
+			// 4. apply the manufacturing rotation to the parent co-packing mesh (and implicitly its children).
+			//    Notice that this is done before the computation of the BoundingBox and volume.
+			// IMPORTANT: do not confuse manufacturing orientation with the packing
+			//            orientations from the orientations provided by the annealing further on.
+			mfgRotationMatrix = getManufacturingOrientation(item)
+			mesh.Transform(mfgRotationMatrix)
 
-				done = timed(fmt.Sprintf("loading co-packed mesh %s", cp.Filename))
-				coMesh, err := fauxgl.LoadMesh(cp.Filename)
-				if err != nil {
-					panic(err)
-				}
-				done()
-
-				// IMPORTANT: cp.Scale is ignored. The main co-packing
-				// mesh's scale is applied to all of its co-packed objects.
-				if scale != 1.0 {
-					done = timed("scaling main co-packing mesh")
-					coMesh.Transform(scaleMatrix)
-					done()
-				}
-
-				// add coMesh to the main mesh.
-				mesh.Add(coMesh)
-			}
-
-			// update arrays with the main co-packing mesh's data for the json output.
+			// 5. update all the copies of the parent co-packing mesh
+			//    (and implicitly its children) for the json output.
 			size := mesh.BoundingBox().Size()
 			for i := 0; i < item.Count; i++ {
 				singleStlSize = append(singleStlSize, size)
 				srcStlNames = append(srcStlNames, item.Filename)
 				scaleStl = append(scaleStl, scaleMatrix)
+				mfgRotationStl = append(mfgRotationStl, mfgRotationMatrix)
 			}
 
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
-			done = timed("centering co-packed mesh")
-			mesh.Center()
-			done()
-
+			// 6. coarse approx of its volume.
 			totalVolume += mesh.BoundingBox().Volume()
 		}
 
 		done = timed("building bvh tree")
 
-		model.Add(mesh, bvhDetail, item.Count, spacing)
+		model.Add(mesh, bvhDetail, item.Count, spacing, getAvailableRotations(item.AxesLock))
 		ok = true
 		done()
 
@@ -223,7 +288,7 @@ func main() {
 	model.Deviation = side / 32 //it is not the distance between objects. And it seems that it will not reflect the distance.
 
 	/*  Mesh packing loop. This loop is to find the best STL mesh packing.
-	Add 'break' in the loop to stop program */
+	    Add 'break' in the loop to stop program */
 	start := time.Now()
 	maxItemNum := len(model.Items)
 	var timeLimit float64
@@ -239,16 +304,16 @@ func main() {
 
 	minItemNum := 0
 	packItemNum := maxItemNum
-	success_model := pack3d.NewModel()
+	successModel := pack3d.NewModel()
 
 	for {
-		model, ntime = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
-		/* ntime is the times of trial to find a output solution, if after trying for 100 times
-		and no solution is found, then reset the model and try again. Usually if there is a solution,
-		ntime will be 1 or 2 for most cases. */
-		if ntime >= 100 {
+		model, iterations = model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)
+		/* iterations is the times of trial to find a output solution, if after trying for 100 times
+		   and no solution is found, then reset the model and try again. Usually if there is a solution,
+		   iterations will be 1 or 2 for most cases. */
+		if iterations >= 100 {
 			/* There is a case that even I reset the model for many times, I still can't find a solution,
-			In this case, I need to set a threshold (20 second) to stop the software*/
+			   In this case, I need to set a threshold (20 second) to stop the software*/
 			if time.Since(start).Seconds() <= timeLimit {
 				model.Reset()
 				continue
@@ -294,7 +359,7 @@ func main() {
 		fmt.Println("-----------------------------------------")
 		minItemNum = packItemNum + 1
 		packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum) / 2)))
-		success_model = model
+		successModel = model
 		start = time.Now()
 
 		if minItemNum > maxItemNum {
@@ -308,19 +373,35 @@ func main() {
 		transMatrix    [4][4]float64
 		fillPercentage float64
 	)
-	transformation := success_model.Transformation()
-	for j := 0; j < len(success_model.Items); j++ {
+	transformation := successModel.Transformation()
+
+	// The scaling is applied directly in main.go and this is not ideal in terms of
+	// modularisation but for the sake of time it had to be squished in here.
+	// Tech debt: extract the scaling from main.go.
+	for j := 0; j < len(successModel.Items); j++ {
 		copack, ok := coPackMap[srcStlNames[j]]
 		if !ok {
 
 			t := transformation[j]
-			st := t.Mul(scaleStl[j])  // scaled transformation for the j-th mesh.
+			rt := t.Mul(mfgRotationStl[j]) // manufacturing rotation for the j-th mesh.
+			st := rt.Mul(scaleStl[j])      // scaled transformation for the j-th mesh.
+
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
-				transMatrix = [4][4]float64{{st.X00, st.X01, st.X02, st.X03}, {st.X10, st.X11, st.X12, st.X13}, {st.X20, st.X21, st.X22, st.X23}, {st.X30, st.X31, st.X32, st.X33}}
+				transMatrix = [4][4]float64{
+					{st.X00, st.X01, st.X02, st.X03},
+					{st.X10, st.X11, st.X12, st.X13},
+					{st.X20, st.X21, st.X22, st.X23},
+					{st.X30, st.X31, st.X32, st.X33},
+				}
 			} else {
-				transMatrix = [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
+				transMatrix = [4][4]float64{
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+				}
 			}
 
 			// buildVolume's filling percentage.
@@ -329,15 +410,26 @@ func main() {
 			transMaps = append(transMaps, TransMap{srcStlNames[j], transMatrix, fillVolumeWithSpacing})
 
 		} else {
-			
+
 			t := transformation[j]
-			st := t.Mul(scaleStl[j])  // scaled transformation for the j-th mesh.
+			rt := t.Mul(mfgRotationStl[j]) // manufacturing rotation for the j-th mesh.
+			st := rt.Mul(scaleStl[j])      // scaled transformation for the j-th mesh.
 			fillVolumeWithSpacing = (singleStlSize[j].X + spacing) * (singleStlSize[j].Y + spacing) * (singleStlSize[j].Z + spacing)
 			if j < packItemNum {
 				totalFillVolume += fillVolumeWithSpacing
-				transMatrix = [4][4]float64{{st.X00, st.X01, st.X02, st.X03}, {st.X10, st.X11, st.X12, st.X13}, {st.X20, st.X21, st.X22, st.X23}, {st.X30, st.X31, st.X32, st.X33}}
+				transMatrix = [4][4]float64{
+					{st.X00, st.X01, st.X02, st.X03},
+					{st.X10, st.X11, st.X12, st.X13},
+					{st.X20, st.X21, st.X22, st.X23},
+					{st.X30, st.X31, st.X32, st.X33},
+				}
 			} else {
-				transMatrix = [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}
+				transMatrix = [4][4]float64{
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+					{0, 0, 0, 0},
+				}
 			}
 
 			// buildVolume's filling percentage.
@@ -354,34 +446,44 @@ func main() {
 			}
 		}
 	}
-	positions_json, err := json.Marshal(transMaps)
+	positionsJson, err := json.Marshal(transMaps)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 	fmt.Println("the fill percentage is:", fillPercentage)
-	ioutil.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positions_json, 0644)
-	// os.Stdout.Write(positions_json)
+	ioutil.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positionsJson, 0644)
+	// os.Stdout.Write(positionsJson)
 
 	// STL file is no longer created, results returned as JSON for separate packer.
-	// Unblock the following line if want to generate the packing STL
-	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))
+	// Unblock on of the following lines to generate the packing STL file. This is typically done only for debugging purposes.
+	// model.Mesh().SaveSTL(fmt.Sprintf("pack3d_debug_test.stl")) // store the STL file in the main Nautilus folder.
+	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))  // store the STL file next to the json file.
 	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
 }
 
 type Config struct {
-	BuildVolume [3]float64 `json:"build_volume"`
-	Spacing     float64    `json:"spacing"`
-	Items       []struct {
-		Filename string    `json:"filename"`
-		Scale    float64   `json:"scale"`
-		Count    int       `json:"count"`
-		Copack   []*Copack `json:"copack,omitempty"`
-	} `json:"items"`
+	BuildVolume [3]float64   `json:"build_volume"`
+	Spacing     float64      `json:"spacing"`
+	ConfigItems []ConfigItem `json:"items"`
+}
+
+type ConfigItem struct {
+	Filename string    `json:"filename"`
+	Scale    float64   `json:"scale"`
+	Count    int       `json:"count"`
+	Copack   []*Copack `json:"copack,omitempty"`
+	AxesLock *AxesLock `json:"axes_lock"`
 }
 
 type Copack struct {
-	Filename     string    `json:"filename"`
+	Filename string `json:"filename"`
 	// Scale        float64   `json:"scale"`
 	// Transformation [4][4]float64 `json:"transformation"`  // ch32838 initially required this field then the requirements changed.
+}
+
+type AxesLock struct {
+	ThetaX *float64 `json:"theta_x"`
+	ThetaY *float64 `json:"theta_y"`
+	ThetaZ *float64 `json:"theta_z"`
 }
