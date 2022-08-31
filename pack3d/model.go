@@ -11,23 +11,23 @@ var AxisXRotations []fauxgl.Matrix
 var AxisYRotations []fauxgl.Matrix
 var AxisZRotations []fauxgl.Matrix
 
-/*The loop runs 24 times for all the rotation possibility*/
 func init() {
 	axisDirections := [2]int{-1, 1}
+	// This nested loops run 24 times in total - for all possible 90deg rotations and axis directions.
 	for i := 0; i < 4; i++ { // every axis 4 times to return to the original position
 		for _, s := range axisDirections { // switch axis direction - or +
-			for a := 1; a <= 3; a++ { // switch axis (3 axis)
+			for axisId := 1; axisId <= 3; axisId++ { // switch axis (3 axes)
 				up := AxisZ.Vector()                                  // z axis
-				m := fauxgl.Rotate(up, float64(i)*fauxgl.Radians(90)) // Rotation matrix in z axis (4 by 4 matrix)
-				//fmt.Println(Axis(a).Vector().MulScalar(float64(s))) is all axis
-				m = m.RotateTo(up, Axis(a).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
+				m := fauxgl.Rotate(up, float64(i)*fauxgl.Radians(90)) // 4x4 rotation matrix around the z axis.
+				//fmt.Println(Axis(axisId).Vector().MulScalar(float64(s))) is all axis
+				m = m.RotateTo(up, Axis(axisId).Vector().MulScalar(float64(s))) //rotation matrix in all axis(4 by 4)
 
-				if a == 1 {
-					AxisXRotations = append(AxisXRotations, m) // 8 rotation matrices
-				} else if a == 2 {
-					AxisYRotations = append(AxisYRotations, m) // 8 rotation matrices
-				} else if a == 3 {
-					AxisZRotations = append(AxisZRotations, m) // 8 rotation matrices
+				if axisId == 1 {
+					AxisXRotations = append(AxisXRotations, m) // 8 rotation matrices.
+				} else if axisId == 2 {
+					AxisYRotations = append(AxisYRotations, m) // 8 rotation matrices.
+				} else if axisId == 3 {
+					AxisZRotations = append(AxisZRotations, m) // 8 rotation matrices.
 				}
 			}
 		}
@@ -187,15 +187,23 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 	transformation := m.Transformation()[i]
 	size := singleStlSize[i]
 
-	// Rotate around the center of volume while checking if rotation is valid. (do not rotate around origin)
-	points = append(points, fauxgl.V(size.X/2, size.Y/2, size.Z/2))
-	points = append(points, fauxgl.V(size.X/2, -size.Y/2, size.Z/2))
-	points = append(points, fauxgl.V(size.X/2, -size.Y/2, -size.Z/2))
-	points = append(points, fauxgl.V(size.X/2, size.Y/2, -size.Z/2))
-	points = append(points, fauxgl.V(-size.X/2, size.Y/2, size.Z/2))
-	points = append(points, fauxgl.V(-size.X/2, size.Y/2, -size.Z/2))
-	points = append(points, fauxgl.V(-size.X/2, -size.Y/2, size.Z/2))
-	points = append(points, fauxgl.V(-size.X/2, -size.Y/2, -size.Z/2))
+	// Rotate and then check that the rotation applied to the bound is valid in the for loop.
+
+	// Note: previously Minglunt translated the bound to the center of the box
+	//       before applying the rotation. That translation later on was found to
+	//       have caused a nasty regression that generated "nested" packing under
+	//       certain conditions - no blaming, just documenting. So, the translation
+	//       had to be reverted. See the STL output in the folder manual_tests:
+	//       sc-46802_test. Switch the Meshlab visualisation from faces to points
+	//       to spot the nested geometries inside the neck of the bust.
+	points = append(points, fauxgl.V(0.0, 0.0, 0.0))
+	points = append(points, fauxgl.V(size.X, 0.0, 0.0))
+	points = append(points, fauxgl.V(0.0, size.Y, 0.0))
+	points = append(points, fauxgl.V(0.0, 0.0, size.Z))
+	points = append(points, fauxgl.V(size.X, size.Y, 0.0))
+	points = append(points, fauxgl.V(size.X, 0.0, size.Z))
+	points = append(points, fauxgl.V(0.0, size.Y, size.Z))
+	points = append(points, size)
 
 	for j := 0; j < 8; j++ {
 		point = points[j]
