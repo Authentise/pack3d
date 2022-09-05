@@ -189,14 +189,14 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 
 	// Rotate and then check that the rotation applied to the bound is valid in the for loop.
 
-	// Note: In July 2019This was updated to translate the bound to the center of the 
-	//       box before applying the rotation (See commit 593db93).
-	//       That translation was found at the origin of a nasty regression
+	// Note: In July 2019, this block of points assignments was updated to translate
+	//       the bound to the centerof the box before applying the rotation. See commit 593db93.
+	//       That translation was later found at the origin of a nasty regression
 	//       which made pack3d generate "nested" packings under certain conditions.
-	//       that problem translation had to be reverted in sc-46802.
-	//       Incorrect STL output, prior to the sc-46802 fix, for reference is in the folder
-	//       manual_tests: sc-46802_test. Switch the Meshlab visualisation from
-	//       faces to points to be able to spot the nested geometries inside the
+	//       That problematic translation had to be reverted in sc-46802.
+	//       Incorrect STL output, prior to the sc-46802 fix, for reference, is in
+	//       the folder manual_tests: sc-46802_test. Switch the Meshlab visualisation
+	//       from faces to points to be able to spot the nested geometries inside the
 	//       neck of the STL bust.
 	points = append(points, fauxgl.V(0.0, 0.0, 0.0))
 	points = append(points, fauxgl.V(size.X, 0.0, 0.0))
