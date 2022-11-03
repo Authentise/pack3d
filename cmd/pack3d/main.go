@@ -141,7 +141,7 @@ func main() {
 	spacing := config.Spacing / 2.0
 
 	// frameSize is the vertex in the first quadrant
-	frameSize := fauxgl.V(config.BuildVolume[0]/2.0, config.BuildVolume[1]/2.0, config.BuildVolume[2]/2.0)
+	frameSize := fauxgl.V(config.BuildVolume[0], config.BuildVolume[1], config.BuildVolume[2])
 	buildVolume := config.BuildVolume[0] * config.BuildVolume[1] * config.BuildVolume[2]
 	//fmt.Println(frameSize)
 
