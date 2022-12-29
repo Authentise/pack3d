@@ -482,6 +482,9 @@ type Copack struct {
 	// Transformation [4][4]float64 `json:"transformation"`  // ch32838 initially required this field then the requirements changed.
 }
 
+// The struct name AxesLock is incorrect and should be replaced
+// with MfgOrientation and corrected everywhere else in this file.
+// This naming issue was spotted during the handoff to Tyler.
 type AxesLock struct {
 	ThetaX *float64 `json:"theta_x"`
 	ThetaY *float64 `json:"theta_y"`

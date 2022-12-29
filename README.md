@@ -15,6 +15,8 @@ Notice the absence of the extension of the `output` file. This is because an `st
 
 ## Input example:
 
+#### NB: the name `axes_lock` is incorrect and it stands in place of `mfg_orientation`.
+
 ```
 {
     "build_volume": [100, 100, 100],
@@ -24,6 +26,11 @@ Notice the absence of the extension of the `output` file. This is because an `st
             "filename": "tests/jenkins_tests/logo.stl",
             "count": 3,
             "scale": 2.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
             "copack": [
                 {
                     "filename": "tests/jenkins_tests/corner.stl"
@@ -33,12 +40,22 @@ Notice the absence of the extension of the `output` file. This is because an `st
         {
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 2,
-            "scale": 4.0
+            "scale": 4.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
         },
         {
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 5,
-            "scale": 1.0
+            "scale": 1.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
         }
     ]
 }
