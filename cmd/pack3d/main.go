@@ -47,6 +47,9 @@ func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
 
 	// Tech debt: this function should probably be moved into model.go
 
+	if axesLock == nil {
+		return []fauxgl.Matrix{fauxgl.Identity()}
+	}
 	availableRotations := make([]fauxgl.Matrix, 0)
 	if axesLock.ThetaX == nil {
 		availableRotations = append(availableRotations, pack3d.AxisXRotations...)
@@ -73,6 +76,9 @@ func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
 	//       and pack3d "seems" to be the same order of rotation but with the "minus" sign for all three angles.
 	//       e.g.: -fauxgl.Radians(*item.AxesLock.ThetaX)
 	mfgRotationMtx := fauxgl.Identity()
+	if item.AxesLock == nil {
+		return mfgRotationMtx
+	}
 	if item.AxesLock.ThetaX != nil {
 		axisX := pack3d.AxisX.Vector() // x axis
 		mfgRotationMtx = mfgRotationMtx.Rotate(axisX, -fauxgl.Radians(*item.AxesLock.ThetaX))
@@ -91,9 +97,10 @@ func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
 func main() {
 	jsonFileArg := flag.String("input_config_json_filename", "", "json config file")
 	fileNameArg := flag.String("output_packing_json_filename", "pack3d", "export filename")
+	versionArg := flag.Bool("version", false, "pack3d version")
 	flag.Parse()
 
-	if len(os.Args) > 1 && os.Args[1] == "--version" {
+	if *versionArg {
 		fmt.Println("Pack3d 1.5.0")
 		return
 	}
