@@ -13,10 +13,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"time"
 
@@ -102,7 +100,7 @@ func main() {
 
 	var config Config
 	if jsonFileArg != nil {
-		file, err := ioutil.ReadFile(*jsonFileArg)
+		file, err := os.ReadFile(*jsonFileArg)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -129,8 +127,6 @@ func main() {
 		srcStlNames    []string
 		transMaps      []TransMap
 	)
-
-	rand.Seed(time.Now().UTC().UnixNano())
 
 	model := pack3d.NewModel()
 	scale := 1.0
@@ -451,7 +447,7 @@ func main() {
 		fmt.Println("error:", err)
 	}
 	fmt.Println("the fill percentage is:", fillPercentage)
-	ioutil.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positionsJson, 0644)
+	os.WriteFile(fmt.Sprintf("%s.json", *fileNameArg), positionsJson, 0644)
 	// os.Stdout.Write(positionsJson)
 
 	// STL file is no longer created, results returned as JSON for separate packer.
