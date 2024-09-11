@@ -3,34 +3,30 @@ package pack3d
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
-	"os"
 	"time"
 
 	"github.com/fogleman/fauxgl"
 )
 
-// Applies rotation, scaling, and co-packing if specified.
-func Pack(input, output string) {
+const (
+	BVH_DETAIL           = 8
+	ANNEALING_ITERATIONS = 2000000 // # of trials
+)
 
-	// Load config
-	var config Config
-	file, err := os.ReadFile(input)
-	if err != nil {
-		log.Fatal(err)
-	}
+type PackingOutput struct {
+	Model    *Model
+	MeshJSON []byte
+}
 
-	err = json.Unmarshal([]byte(file), &config)
-	if err != nil {
-		log.Fatal(err)
-	}
+type TransMap struct {
+	Filename          string
+	Transformation    [4][4]float64
+	VolumeWithSpacing float64
+}
 
-	type TransMap struct {
-		Filename          string
-		Transformation    [4][4]float64
-		VolumeWithSpacing float64
-	}
+// Attempts to pack a list of objects, applying rotation, scaling, and co-packing if specified.
+func Pack(config *Config) (*PackingOutput, error) {
 
 	var (
 		singleStlSize  []fauxgl.Vector
@@ -47,7 +43,6 @@ func Pack(input, output string) {
 	scale := 1.0
 	var scaleMatrix fauxgl.Matrix
 	var mfgRotationMatrix fauxgl.Matrix
-	var ok bool
 
 	spacing := config.Spacing / 2.0
 
@@ -72,7 +67,7 @@ func Pack(input, output string) {
 			done = timed(fmt.Sprintf("loading mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			done()
 
@@ -120,7 +115,7 @@ func Pack(input, output string) {
 			done = timed(fmt.Sprintf("loading the main co-packing mesh %s", item.Filename))
 			mesh, err = fauxgl.LoadMesh(item.Filename)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			done()
 
@@ -130,7 +125,7 @@ func Pack(input, output string) {
 				done = timed(fmt.Sprintf("loading the co-packed mesh %s", cp.Filename))
 				coMesh, err := fauxgl.LoadMesh(cp.Filename)
 				if err != nil {
-					panic(err)
+					return nil, err
 				}
 				done()
 
@@ -181,18 +176,9 @@ func Pack(input, output string) {
 		done = timed("building bvh tree")
 
 		model.Add(mesh, BVH_DETAIL, item.Count, spacing, getAvailableRotations(item.AxesLock))
-		ok = true
 		done()
 
 		fmt.Println("______________________________________________________")
-	}
-
-	if !ok {
-		fmt.Println("Usage: pack3d --input_config_json_filename==mesh_config.json --output_packing_json_filename=export.json")
-		fmt.Println(" - Packs N copies of each mesh into as small of a volume as possible.")
-		fmt.Println(" - Runs forever, looking for the best packing.")
-		fmt.Println(" - Results are written to disk whenever a new best is found.")
-		return
 	}
 
 	side := math.Pow(totalVolume, 1.0/3)
@@ -359,24 +345,14 @@ func Pack(input, output string) {
 	}
 	positionsJson, err := json.Marshal(transMaps)
 	if err != nil {
-		fmt.Println("error:", err)
+		return nil, err
 	}
 	fmt.Println("the fill percentage is:", fillPercentage)
-	os.WriteFile(fmt.Sprintf("%s.json", output), positionsJson, 0644)
-	// os.Stdout.Write(positionsJson)
 
-	// STL file is no longer created, results returned as JSON for separate packer.
-	// Unblock on of the following lines to generate the packing STL file. This is typically done only for debugging purposes.
-	// model.Mesh().SaveSTL(fmt.Sprintf("pack3d_debug_test.stl")) // store the STL file in the main Nautilus folder.
-	// model.Mesh().SaveSTL(fmt.Sprintf("%s.stl", *fileNameArg))  // store the STL file next to the json file.
-	// model.TreeMesh().SaveSTL(fmt.Sprintf("out%dtree.stl", int(score*100000)))
 	done()
-}
 
-const (
-	BVH_DETAIL           = 8
-	ANNEALING_ITERATIONS = 2000000 // # of trials
-)
+	return &PackingOutput{Model: model, MeshJSON: positionsJson}, nil
+}
 
 /* This function returns the current time (it is a timer). */
 func timed(name string) func() {
@@ -443,33 +419,4 @@ func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
 		mfgRotationMtx = mfgRotationMtx.Rotate(axisZ, -fauxgl.Radians(*item.AxesLock.ThetaZ))
 	}
 	return mfgRotationMtx
-}
-
-type Config struct {
-	BuildVolume [3]float64   `json:"build_volume"`
-	Spacing     float64      `json:"spacing"`
-	ConfigItems []ConfigItem `json:"items"`
-}
-
-type ConfigItem struct {
-	Filename string    `json:"filename"`
-	Scale    float64   `json:"scale"`
-	Count    int       `json:"count"`
-	Copack   []*Copack `json:"copack,omitempty"`
-	AxesLock *AxesLock `json:"axes_lock"`
-}
-
-type Copack struct {
-	Filename string `json:"filename"`
-	// Scale        float64   `json:"scale"`
-	// Transformation [4][4]float64 `json:"transformation"`  // ch32838 initially required this field then the requirements changed.
-}
-
-// The struct name AxesLock is incorrect and should be replaced
-// with MfgOrientation and corrected everywhere else in this file.
-// This naming issue was spotted during the handoff to Tyler.
-type AxesLock struct {
-	ThetaX *float64 `json:"theta_x"`
-	ThetaY *float64 `json:"theta_y"`
-	ThetaZ *float64 `json:"theta_z"`
 }
