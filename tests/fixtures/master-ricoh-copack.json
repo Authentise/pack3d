@@ -1,0 +1,19 @@
+{
+    "build_volume": [50, 50, 50],
+    "spacing": 2,
+    "items": [
+        {
+            "filename": "../tests/fixtures/logo.stl",
+            "count": 2,
+            "copack": [
+                {
+                    "filename": "../tests/fixtures/corner.stl"
+                }
+            ]
+        },
+        {
+            "filename": "../tests/fixtures/cube.stl",
+            "count": 3
+        }
+    ]
+}
