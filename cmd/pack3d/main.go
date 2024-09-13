@@ -9,7 +9,8 @@ import (
 )
 
 func main() {
-	inputFileName := flag.String("input_config_json_filename", "", "json config file")
+	// Flags
+	inputFileName := flag.String("input_config_json_filename", "", "path to input config file")
 	outputFileName := flag.String("output_packing_json_filename", "pack3d", "export filename")
 	showVersion := flag.Bool("version", false, "pack3d version")
 	saveStl := flag.Bool("save_stl", false, "create stl output file")
