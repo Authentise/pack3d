@@ -160,3 +160,16 @@ Notice the absence of the extension of the `output` file. This is because an `st
 ]
 ]
 ```
+
+### Known Issues
+
+List of issues discovered in 2024 update. These are limitations which are largely avoided if the build plate is sufficiently larger than the collective volume of items to pack.
+
+1. If the volume of the items to pack is close to the build plate volume, sometimes pack3d will happily exceed the build plates volume.
+    i. This is an issue with the internal algorithm of pack3d (i.e not Authentise code)
+2. Spacing doesn't seem to be accounted for in the total volume. If I pack 2 cubes of 1x1x1 in a 2x1x1 space with 1 unit of spacing (i.e, not possible), the packing will ignore the outer bounds and pack them successfully
+    i. This is because spacing is applied after packing.
+3. If we can't pack all models, we use binary search to find the highest number we can. If there's a small number of models, the "candidate" in binary search might become 0. In that case, the program crashes.
+    i. This makes testing for cases where we expect pack3d to fail difficult
+4. For cases where all of the models will not fit, we don't appear to exit early from the packing algorithm to adjust the number of models we try to pack.
+    i. This means that we will waste at least 10s trying to pack a configuration that will always fail, before we begin the binary search algo.
