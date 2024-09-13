@@ -138,6 +138,9 @@ func (p *Packer) loadConfig(config *Config) error {
 	return nil
 }
 
+// Will attempt to pack model's items, optimistically initially trying them all
+// If this fails, and takes long (>10s), use binary search to find an acceptable
+// number of items to pack
 func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	buildDimensions := p.config.BuildVolume
 	frameSize := fauxgl.V(buildDimensions[0], buildDimensions[1], buildDimensions[2])
@@ -220,21 +223,28 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	return bestModel, bestPacked
 }
 
+// Returns list of files and their transformation matrices and volumes
+// Note NULL transformation implies the file was _not_ packed
 func (p *Packer) generateTransformations(model *Model, itemsPacked int) ([]TransMap, float64) {
 	done := timed("writing mesh")
 
 	volume := 0.0
 	transMaps := []TransMap{}
 
+	// Note: these are the transformations applied _during the packing step_.
+	// We also applied scaling and rotating (mfg) during the initialization step
+	// (loadConfig). We need to reapply those here.
 	transformations := model.Transformation()
 	spacing := p.config.Spacing / 2.0
 
 	for i, object := range p.objects {
 		transMatrix := [4][4]float64{}
 		size := p.sizes[i]
+		// Reapply rotation and scaling
 		t := transformations[i].Mul(object.mfgRotation).Mul(object.scale)
 
 		fillVolumeWithSpacing := (size.X + spacing) * (size.Y + spacing) * (size.Z + spacing)
+
 		// Otherwise, set as empty matrix
 		if i < itemsPacked {
 			volume += fillVolumeWithSpacing
@@ -268,7 +278,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 		return nil, err
 	}
 
-	// Packs into optimal orientation
+	// Find optimal packing orientation
 	model, itemsPacked := packer.getOptimallyPackedModel()
 
 	// Formats packed model's transformations to be exported
