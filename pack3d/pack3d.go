@@ -89,7 +89,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 			//    Notice that this is done before the computation of the BoundingBox and volume.
 			// IMPORTANT: do not confuse manufacturing orientation with the packing
 			//            orientations from the orientations provided by the annealing further on.
-			mfgRotationMatrix = getManufacturingOrientation(item)
+			mfgRotationMatrix = item.ManufacturingOrientation()
 			mesh.Transform(mfgRotationMatrix)
 
 			// 5. update all the copies mesh for the json output.
@@ -153,7 +153,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 			//    Notice that this is done before the computation of the BoundingBox and volume.
 			// IMPORTANT: do not confuse manufacturing orientation with the packing
 			//            orientations from the orientations provided by the annealing further on.
-			mfgRotationMatrix = getManufacturingOrientation(item)
+			mfgRotationMatrix = item.ManufacturingOrientation()
 			mesh.Transform(mfgRotationMatrix)
 
 			// 5. update all the copies of the parent co-packing mesh
@@ -175,7 +175,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 
 		done = timed("building bvh tree")
 
-		model.Add(mesh, BVH_DETAIL, item.Count, spacing, getAvailableRotations(item.AxesLock))
+		model.Add(mesh, BVH_DETAIL, item.Count, spacing, item.AvailableRotations())
 		done()
 
 		fmt.Println("______________________________________________________")
@@ -351,72 +351,6 @@ func Pack(config *Config) (*PackingOutput, error) {
 
 	done()
 
-	return &PackingOutput{Model: model, MeshJSON: positionsJson}, nil
+	return &PackingOutput{Model: successModel, MeshJSON: positionsJson}, nil
 }
 
-/* This function returns the current time (it is a timer). */
-func timed(name string) func() {
-	if len(name) > 0 {
-		fmt.Printf("%s... ", name)
-	}
-	start := time.Now()
-	return func() {
-		fmt.Println(time.Since(start))
-	}
-}
-
-func getAvailableRotations(axesLock *AxesLock) []fauxgl.Matrix {
-	// This function returns only the available rotations
-	// which depend on the unlocked axes provided by the user.
-	// An unlocked axis is characterised by a `nil` theta angle.
-	// Setting a theta angle with a Float instead means that
-	// that rotation axis is locked to a specific angle.
-
-	// Tech debt: this function should probably be moved into model.go
-
-	if axesLock == nil {
-		return []fauxgl.Matrix{fauxgl.Identity()}
-	}
-	availableRotations := make([]fauxgl.Matrix, 0)
-	if axesLock.ThetaX == nil {
-		availableRotations = append(availableRotations, AxisXRotations...)
-	}
-	if axesLock.ThetaY == nil {
-		availableRotations = append(availableRotations, AxisYRotations...)
-	}
-	if axesLock.ThetaZ == nil {
-		availableRotations = append(availableRotations, AxisZRotations...)
-	}
-	// the function needs to return at least one dummy rotation (the identity matrix).
-	if len(availableRotations) == 0 {
-		availableRotations = append(availableRotations, fauxgl.Identity())
-	}
-	return availableRotations
-}
-
-func getManufacturingOrientation(item ConfigItem) fauxgl.Matrix {
-	// This function's purpose is to create a composite rotation matrix from the three provided angles.
-
-	// Tech debt: this function might need to be moved into a function in fauxgl.mesh.
-
-	// NOTE: The THREE.Euler's rotation order (in Rapidfab) has been set as 'ZYX' to match Blender's rotation order
-	//       and pack3d "seems" to be the same order of rotation but with the "minus" sign for all three angles.
-	//       e.g.: -fauxgl.Radians(*item.AxesLock.ThetaX)
-	mfgRotationMtx := fauxgl.Identity()
-	if item.AxesLock == nil {
-		return mfgRotationMtx
-	}
-	if item.AxesLock.ThetaX != nil {
-		axisX := AxisX.Vector() // x axis
-		mfgRotationMtx = mfgRotationMtx.Rotate(axisX, -fauxgl.Radians(*item.AxesLock.ThetaX))
-	}
-	if item.AxesLock.ThetaY != nil {
-		axisY := AxisY.Vector() // y axis
-		mfgRotationMtx = mfgRotationMtx.Rotate(axisY, -fauxgl.Radians(*item.AxesLock.ThetaY))
-	}
-	if item.AxesLock.ThetaZ != nil {
-		axisZ := AxisZ.Vector() // z axis
-		mfgRotationMtx = mfgRotationMtx.Rotate(axisZ, -fauxgl.Radians(*item.AxesLock.ThetaZ))
-	}
-	return mfgRotationMtx
-}
