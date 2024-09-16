@@ -167,6 +167,11 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	for {
 		// Attempt to pack
 		iterations := 0
+		if mid == 0 {
+			// Pack will crash if mid == 0
+			// Can't pack anything, so return
+			break
+		}
 		p.model, iterations = p.model.Pack(
 			ANNEALING_ITERATIONS,
 			nil, // no callback
@@ -219,6 +224,7 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 				}
 			}
 		}
+
 	}
 	return bestModel, bestPacked
 }
