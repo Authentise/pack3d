@@ -240,23 +240,26 @@ func (p *Packer) generateTransformations(model *Model, itemsPacked int) ([]Trans
 	for i, object := range p.objects {
 		transMatrix := [4][4]float64{}
 		size := p.sizes[i]
-		// Reapply rotation and scaling
-		t := transformations[i].Mul(object.mfgRotation).Mul(object.scale)
-
-		fillVolumeWithSpacing := (size.X + spacing) * (size.Y + spacing) * (size.Z + spacing)
-
-		// Otherwise, set as empty matrix
 		if i < itemsPacked {
+			// Model fit into packing
+
+			// Reapply rotation and scaling
+			t := transformations[i].Mul(object.mfgRotation).Mul(object.scale)
+
+			fillVolumeWithSpacing := (size.X + spacing) * (size.Y + spacing) * (size.Z + spacing)
+
 			volume += fillVolumeWithSpacing
-			transMatrix = [4][4]float64{
+			transMatrix := [4][4]float64{
 				{t.X00, t.X01, t.X02, t.X03},
 				{t.X10, t.X11, t.X12, t.X13},
 				{t.X20, t.X21, t.X22, t.X23},
 				{t.X30, t.X31, t.X32, t.X33},
 			}
+			transMaps = append(transMaps, TransMap{object.filename, transMatrix, fillVolumeWithSpacing})
+		} else {
+			// Otherwise, set as empty matrix
+			transMaps = append(transMaps, TransMap{object.filename, transMatrix, 0})
 		}
-
-		transMaps = append(transMaps, TransMap{object.filename, transMatrix, fillVolumeWithSpacing})
 
 		// Add the co-packed meshes to transMaps.
 		for _, filename := range object.copackedFiles {

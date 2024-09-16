@@ -3,5 +3,5 @@
 *.obj
 .idea/
 
-*.json
-*.stl
+/*.json
+/*.stl
