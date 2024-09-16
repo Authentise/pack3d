@@ -11,6 +11,14 @@ type Config struct {
 	ConfigItems []ConfigItem `json:"items"`
 }
 
+func (c *Config) TotalItems() int {
+	total := 0
+	for _, item := range c.ConfigItems {
+		total += item.Count
+	}
+	return total
+}
+
 type ConfigItem struct {
 	Filename string    `json:"filename"`
 	Scale    float64   `json:"scale"`
