@@ -8,6 +8,11 @@ import (
 	"github.com/Authentise/pack3d/pack3d"
 )
 
+const (
+	// TODO: Add build number etc. for backwards compatibility
+	VERSION = "1.6.0"
+)
+
 func main() {
 	// Flags
 	inputFileName := flag.String("input_config_json_filename", "", "path to input config file")
@@ -25,7 +30,7 @@ func main() {
 	}
 
 	if *showVersion {
-		fmt.Println("Pack3d 1.5.0")
+		fmt.Printf("Pack3d %s", VERSION)
 		return
 	}
 

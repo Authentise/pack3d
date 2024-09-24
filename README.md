@@ -10,6 +10,16 @@ See CONTRIBUTING.md
 
 Run `go run cmd/pack3d/main.go --help` for usage.
 
+## Build
+
+To create a binary, run:
+
+`go build -o <output path> cmd/pack3d/main.go`
+
+To tag it with the current commit, run:
+
+`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
+
 ## Overview
 
 Pack3d consists of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
