@@ -1,65 +1,31 @@
 # pack3d
 
-Pack3d is the geometry packing tool for 3d printing used by Authentise and can be found [here](https://github.com/Authentise/pack3d). Authentise's Pack3d codebase was forked from Fogleman's pack3d.
+Pack3d is the geometry packing tool for 3d printing  [here](https://github.com/Authentise/pack3d). Authentise's Pack3d codebase was forked from Fogleman's pack3d. Pack3d is written in golang and the installation instructions can be found in the CONTRIBUTING.md
 
-Pack3d is written in golang and the installation instructions can be found in the CONTRIBUTING.md
+Pack3d takes STL files and a JSON file of layout limits / complexities, and does stochastic (random re-tries) packing to pack as much as it can 
+into the given build volume. 
 
+STL files do *not* have units, nor does this tool. Assume mm, but size are in un-named 'STL Units'.
 
 ## Invoking pack3d from the command line - example
-
+Jump-start using this tool like this:
 ```
-pack3d --input_config_json_filename=input.json --output_packing_json_filename=output
+pack3d --input_config_json_filename=input.json --output_packing_json_filename=output --save_stl
 ```
 
-Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
+Notice the absence of the extension of the `output` file. This will output Mesh, STL, and 'json of meta-data' files based on that bsaename.  
 
-## Input example:
+## Input example(s):
+See folder `tests/jenkins_tests/input_$NAME` for examples of use. 
 
-#### NB: the name `axes_lock` is incorrect and it stands in place of `mfg_orientation`.
 
-```
-{
-    "build_volume": [100, 100, 100],
-    "spacing": 5,
-    "items": [
-        {
-            "filename": "tests/jenkins_tests/logo.stl",
-            "count": 3,
-            "scale": 2.0,
-            "axes_lock": [
-                "theta_x": 0.0,
-                "theta_y": 0.0,
-                "theta_z": 0.0
-            ],
-            "copack": [
-                {
-                    "filename": "tests/jenkins_tests/corner.stl"
-                }
-            ]
-        },
-        {
-            "filename": "tests/jenkins_tests/cube.stl",
-            "count": 2,
-            "scale": 4.0,
-            "axes_lock": [
-                "theta_x": 0.0,
-                "theta_y": 0.0,
-                "theta_z": 0.0
-            ],
-        },
-        {
-            "filename": "tests/jenkins_tests/cube.stl",
-            "count": 5,
-            "scale": 1.0,
-            "axes_lock": [
-                "theta_x": 0.0,
-                "theta_y": 0.0,
-                "theta_z": 0.0
-            ],
-        }
-    ]
-}
-```
+### Key features of input json file
+ - the name `axes_lock` indicated if a model has a locked packing orientation, aka (`mfg_orientation`). Null indicates it can be rotated in that 
+direction by the packing tool 
+ - 'axes_locked' is required, some (most?) keys are required per `item`.
+ - The 'spacing' is minimum distance between objects as you pack them 
+ - The 'co-packing' is if 2 STL geometries touch / print touching in a locked orientation
+ - Scaling needs to be set especially of model STL's are in different units from the build-space outline
 
 ## Output example (related to the input example):
 
