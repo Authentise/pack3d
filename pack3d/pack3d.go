@@ -101,6 +101,10 @@ func Pack(config *Config) (*PackingOutput, error) {
 				mfgRotationStl = append(mfgRotationStl, mfgRotationMatrix)
 			}
 
+			fmt.Printf("== Plate == \n")
+			fmt.Printf(" %g x %g y %g z\n", config.BuildVolume[0], config.BuildVolume[1], config.BuildVolume[2])
+
+			fmt.Printf("== Mesh == \n")
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
 
@@ -197,7 +201,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 		X20: 0, X21: 0, X22: 0, X23: 0,
 		X30: 0, X31: 0, X32: 0, X33: 0,
 	}
-	timeLimit = 10
+	timeLimit = 20 // second
 
 	minItemNum := 0
 	packItemNum := maxItemNum
@@ -220,7 +224,7 @@ func Pack(config *Config) (*PackingOutput, error) {
 
 				// Binary search
 				fmt.Println("Failed")
-				fmt.Println("packing#, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
+				fmt.Println("packing item #, max#, min# is: ", packItemNum, maxItemNum, minItemNum)
 				fmt.Println("-----------------------------------")
 				maxItemNum = packItemNum - 1
 				packItemNum = int(math.Ceil(float64((maxItemNum + minItemNum) / 2)))
@@ -353,4 +357,3 @@ func Pack(config *Config) (*PackingOutput, error) {
 
 	return &PackingOutput{Model: successModel, MeshJSON: positionsJson}, nil
 }
-
