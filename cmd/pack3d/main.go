@@ -8,8 +8,14 @@ import (
 	"github.com/Authentise/pack3d/pack3d"
 )
 
+const (
+	// TODO: Add build number etc. for backwards compatibility
+	VERSION = "1.6.0"
+)
+
 func main() {
-	inputFileName := flag.String("input_config_json_filename", "", "json config file")
+	// Flags
+	inputFileName := flag.String("input_config_json_filename", "", "path to input config file")
 	outputFileName := flag.String("output_packing_json_filename", "pack3d", "export filename")
 	showVersion := flag.Bool("version", false, "pack3d version")
 	saveStl := flag.Bool("save_stl", false, "create stl output file")
@@ -24,7 +30,7 @@ func main() {
 	}
 
 	if *showVersion {
-		fmt.Println("Pack3d 1.5.0")
+		fmt.Printf("Pack3d %s", VERSION)
 		return
 	}
 

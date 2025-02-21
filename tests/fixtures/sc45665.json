@@ -10,7 +10,7 @@
     [
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/shocks.stl",
+            "filename": "../tests/fixtures/shocks.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -21,7 +21,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -32,7 +32,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -43,7 +43,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -54,7 +54,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -65,7 +65,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -76,7 +76,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -87,7 +87,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -98,7 +98,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {
@@ -109,7 +109,7 @@
         },
         {
             "count": 1,
-            "filename": "manual_tests/sc-45665_test/Authentise Logo.stl",
+            "filename": "../tests/fixtures/Authentise Logo.stl",
             "scale": 1.0,
             "axes_lock":
             {

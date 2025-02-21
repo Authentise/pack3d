@@ -43,12 +43,8 @@ func (c *ConfigItem) AvailableRotations() []fauxgl.Matrix {
 }
 
 // This function's purpose is to create a composite rotation matrix from the three provided angles.
-
 // Tech debt: this function might need to be moved into a function in fauxgl.mesh.
-
-// NOTE: The THREE.Euler's rotation order (in Rapidfab) has been set as 'ZYX' to match Blender's rotation order
-//
-//	and pack3d "seems" to be the same order of rotation but with the "minus" sign for all three angles.
+// NOTE: The THREE.Euler's rotation order (in Rapidfab) has been set as 'ZYX' to match Blender's rotation order and pack3d "seems" to be the same order of rotation but with the "minus" sign for all three angles.
 //	e.g.: -fauxgl.Radians(*item.AxesLock.ThetaX)
 func (c *ConfigItem) ManufacturingOrientation() fauxgl.Matrix {
 	mfgRotationMtx := fauxgl.Identity()
