@@ -1,0 +1,16 @@
+{
+    "build_volume": [3000, 3000, 3000],
+    "spacing": 1,
+    "items": [
+        {
+            "filename": "../tests/fixtures/JackSkellingtonBust.stl",
+            "count": 3,
+            "scale": 1.0
+        },
+        {
+            "filename": "../tests/fixtures/big_JackSkellingtonBust.stl",
+            "count": 1,
+            "scale": 1.0
+        }
+    ]
+}

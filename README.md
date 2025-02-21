@@ -1,77 +1,68 @@
-# pack3d
+# Pack3d
 
 Pack3d is the geometry packing tool for 3d printing  [here](https://github.com/Authentise/pack3d). Authentise's Pack3d codebase was forked from [Fogleman's pack3d](https://github.com/fogleman/pack3d). Pack3d is written in golang and the installation instructions can be found in the CONTRIBUTING.md
 
 Pack3d takes STL files and a JSON file of layout limits / complexities, and does stochastic (random re-tries) packing to pack as much as it can 
 into the given build volume. 
 
-STL files do *not* have units, nor does this tool. Assume mm, but size are in un-named 'STL Units'.
+## Installation
 
-## Invoking pack3d from the command line - example
-Jump-start using this tool like this:
-```
-pack3d --input_config_json_filename=input.json --output_packing_json_filename=output --save_stl
-```
+See CONTRIBUTING.md
 
-Notice the absence of the extension of the `output` file. This will output Mesh, STL, and 'json of meta-data' files based on that bsaename.  
+## Usage
 
-## Input example(s):
-See folder `tests/jenkins_tests/input_$NAME` for examples of use. 
+Run `go run cmd/pack3d/main.go --help` for usage.
 
+## Build
 
-### Key features of input json file
- - the name `axes_lock` indicated if a model has a locked packing orientation, aka (`mfg_orientation`). Null indicates it can be rotated in that 
-direction by the packing tool 
- - 'axes_locked' is required, some (most?) keys are required per `item`.
- - The 'spacing' is minimum distance between objects as you pack them 
- - The 'co-packing' is if 2 STL geometries touch / print touching in a locked orientation
- - Scaling needs to be set especially of model STL's are in different units from the build-space outline
+To create a binary, run:
 
-## Output example (related to the input example):
+`go build -o <output path> cmd/pack3d/main.go`
 
-1. The co-packed objects have VolumeWithSpacing = 0. This is because their volume is already contemplated in the value of the main co-packing object's VolumeWithSpacing.
+To tag it with the current commit, run:
 
-2. Notice the scaling visible in the 3x3 rotation matrix.
+`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
 
-3. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.
+## Overview
 
+Pack3d consists of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
 
-```
-[
-    {
-        "Filename": "tests/jenkins_tests/logo.stl",
-        "Transformation": [
-            [ 0, 0, -2, -36.092921290618406],
-            [-2, 0,  0, -4.735731505145346],
-            [ 0, 2,  0, 8.056191563929794],
-            [ 0, 0, 0, 1]
-        ],
-        "VolumeWithSpacing": 5138.241184594143
-    },
-    {
-        "Filename": "tests/jenkins_tests/logo.stl",
-        "Transformation": [
-            [ 0, 0, 2, -36.09345621544282],
-            [ 2, 0, 0, -21.623185522659124],
-            [ 0, 2, 0, -8.785596546107582],
-            [ 0, 0, 0, 1]
-        ],
-        "VolumeWithSpacing": 5138.241184594143
-    },
-    {
-        "Filename": "tests/jenkins_tests/cube.stl",
-        "Transformation": [
-            [ 0, 4, 0, -4.439943270386402],
-            [ 0, 0, 4, -11.647772698025165],
-            [ 4, 0, 0, -28.684157525681382],
-            [ 0, 0, 0, 1]
-        ],
-        "VolumeWithSpacing": 76765.625
-    },
-    .
-    .
-    .
-    .
-]
-]
+### Pack3d command
+
+Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them. It returns a JSON file describing how the input items should be transformed to be packed, and their resulting volumes.
+
+Pack3d is a multi-step process:
+1. Importing
+    We start by loading the 3d meshes of all the input models and applying scaling and manufacturing rotation. This is distinct from the rotation the packing algorithm applies.
+2. Packing
+    Packing is done largely handled by the original forked code. This is done via an 'annealing' process, which tries multiple orientations and tweaking towards a minimum 'energy'.
+    This process can fail. In that case, we either try just restarting the process (might have gotten stuck in a local minimum), or, if it's taken too long, we reduce the number of items to pack. We use binary search to find the maximum number of items to pack.
+3. Exporting
+    We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
+
+### Input Schema
+
+```json
+
+{
+    "build_volume": [100, 100, 100], // Array of 3 floats
+    "spacing": 5, // Float
+    "items": [
+        {
+            "filename": "logo.stl", // Path to model file
+            "count": 3, // Number of this item to pack
+            "scale": 2.0, // Scale this item
+            "axes_lock": [ // Fixed angles if set, otherwise the packing algorithm is free to rotate models about this axis
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": null
+            ], // If not supplied, treated as all values are null
+            "copack": [
+                {
+                    "filename": "tests/jenkins_tests/corner.stl" // List of file names to copack
+                }
+            ], // If not supplied, treated as empty
+        },
+    ],
+}
 ```

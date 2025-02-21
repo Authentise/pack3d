@@ -3,7 +3,7 @@
     "spacing": 1,
     "items": [
         {
-            "filename": "./manual_tests/sc-44515_test/cube.stl",
+            "filename": "../tests/fixtures/cube.stl",
             "count": 10,
             "scale": 1.0,
             "axes_lock": {
@@ -13,7 +13,7 @@
             }
         },
         {
-            "filename": "./manual_tests/sc-44515_test/shocks.stl",
+            "filename": "../tests/fixtures/shocks.stl",
             "count": 1,
             "scale": 0.5,
             "axes_lock": {
@@ -23,15 +23,15 @@
             }
         },
         {
-            "filename": "./manual_tests/sc-44515_test/arrow-minted_cuboid.stl",
+            "filename": "../tests/fixtures/arrow-minted_cuboid.stl",
             "count": 2,
             "scale": 1.0,
             "copack": [
                 {
-                    "filename": "./manual_tests/sc-44515_test/vertical_solid_arrow.stl"
+                    "filename": "../tests/fixtures/vertical_solid_arrow.stl"
                 },
                 {
-                    "filename": "./manual_tests/sc-44515_test/vertical_solid_arrow__translated.stl"
+                    "filename": "../tests/fixtures/vertical_solid_arrow__translated.stl"
                 }
             ],
             "axes_lock": {
