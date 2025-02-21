@@ -66,3 +66,69 @@ Pack3d is a multi-step process:
     ],
 }
 ```
+
+
+
+## Invoking pack3d from the command line - example
+
+```
+pack3d --input_config_json_filename=input.json --output_packing_json_filename=output
+```
+
+Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
+
+## Input example:
+
+#### NB: the name `axes_lock` is incorrect and it stands in place of `mfg_orientation`.
+
+```
+{
+    "build_volume": [100, 100, 100],
+    "spacing": 5,
+    "items": [
+        {
+            "filename": "tests/jenkins_tests/logo.stl",
+            "count": 3,
+            "scale": 2.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
+            "copack": [
+                {
+                    "filename": "tests/jenkins_tests/corner.stl"
+                }
+            ]
+        },
+        {
+            "filename": "tests/jenkins_tests/cube.stl",
+            "count": 2,
+            "scale": 4.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
+        },
+        {
+            "filename": "tests/jenkins_tests/cube.stl",
+            "count": 5,
+            "scale": 1.0,
+            "axes_lock": [
+                "theta_x": 0.0,
+                "theta_y": 0.0,
+                "theta_z": 0.0
+            ],
+        }
+    ]
+}
+```
+
+## Output example (related to the input example):
+
+1. The co-packed objects have VolumeWithSpacing = 0. This is because their volume is already contemplated in the value of the main co-packing object's VolumeWithSpacing.
+
+2. Notice the scaling visible in the 3x3 rotation matrix.
+
+3. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.

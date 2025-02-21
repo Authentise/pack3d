@@ -3,7 +3,7 @@
     "spacing": 5,
     "items": [
        {
-            "filename": "tests/jenkins_tests/3DBenchyx2.stl",
+            "filename": "../tests/fixtures/3DBenchyx2.stl",
             "count": 100,
             "scale": 1.0,
             "axes_lock": {

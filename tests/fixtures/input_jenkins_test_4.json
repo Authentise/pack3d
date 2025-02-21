@@ -3,7 +3,7 @@
     "spacing": 5,
     "items": [
        {
-            "filename": "tests/jenkins_tests/cube.stl",
+            "filename": "../tests/fixtures/cube.stl",
             "count": 10,
             "scale": 1.0,
             "axes_lock": {

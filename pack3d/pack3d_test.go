@@ -82,3 +82,11 @@ func TestSc46802(t *testing.T) {
 func TestSc44515(t *testing.T) {
 	testPackingInputFile(t, "../tests/fixtures/sc44515.json")
 }
+
+func TestZeroPackingError(t *testing.T) {
+	testPackingInputFile(t, "../tests/fixtures/input_jenkins_test_3.json")
+}
+
+func TestZeroPackingError2(t *testing.T) {
+	testPackingInputFile(t, "../tests/fixtures/input_jenkins_test_4.json")
+}
