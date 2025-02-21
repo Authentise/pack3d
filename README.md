@@ -131,4 +131,56 @@ Notice the absence of the extension of the `output` file. This is because an `st
 
 2. Notice the scaling visible in the 3x3 rotation matrix.
 
-3. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.
+1. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.
+
+
+```
+[
+    {
+        "Filename": "tests/jenkins_tests/logo.stl",
+        "Transformation": [
+            [ 0, 0, -2, -36.092921290618406],
+            [-2, 0,  0, -4.735731505145346],
+            [ 0, 2,  0, 8.056191563929794],
+            [ 0, 0, 0, 1]
+        ],
+        "VolumeWithSpacing": 5138.241184594143
+    },
+    {
+        "Filename": "tests/jenkins_tests/logo.stl",
+        "Transformation": [
+            [ 0, 0, 2, -36.09345621544282],
+            [ 2, 0, 0, -21.623185522659124],
+            [ 0, 2, 0, -8.785596546107582],
+            [ 0, 0, 0, 1]
+        ],
+        "VolumeWithSpacing": 5138.241184594143
+    },
+    {
+        "Filename": "tests/jenkins_tests/cube.stl",
+        "Transformation": [
+            [ 0, 4, 0, -4.439943270386402],
+            [ 0, 0, 4, -11.647772698025165],
+            [ 4, 0, 0, -28.684157525681382],
+            [ 0, 0, 0, 1]
+        ],
+        "VolumeWithSpacing": 76765.625
+    },
+    .
+    .
+    .
+    .
+]
+]
+```
+
+### Known Issues
+
+List of issues discovered in 2024 update. These are limitations which are largely avoided if the build plate is sufficiently larger than the collective volume of items to pack.
+
+1. If the volume of the items to pack is close to the build plate volume, sometimes pack3d will happily exceed the build plates volume.
+    i. This is an issue with the internal algorithm of pack3d (i.e not Authentise code)
+2. ~If we can't pack all models, we use binary search to find the highest number we can. If there's a small number of models, the "candidate" in binary search might become 0. In that case, the program crashes.~
+3. We do not check the bounding volumes of the models we're packing compared to the build plate. This means:
+    a. We will attempt to pack items which will never fit on the build plate, when we should be exiting early.
+    b. We will waste attempts by packing too many items whose collective volume is greater than the build plate's.

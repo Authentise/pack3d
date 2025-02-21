@@ -240,7 +240,7 @@ func (m *Model) Energy() float64 {
 
 func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (Undo, int) {
 	var i int = 0
-	if packItemNum > 0 { //avoid Intn(0) erro
+	if packItemNum > 0 { // avoid Intn(0) panic
 		i = rand.Intn(packItemNum) // choose a random index in models
 	}
 	item := m.Items[i] // single model
