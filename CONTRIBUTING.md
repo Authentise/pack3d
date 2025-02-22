@@ -13,9 +13,15 @@ To tag it with the current commit, run:
 
 ## Build for production:
 
-Unclear as to why these flags are required.
+This is the command to build a final biary as OUTPUT_FILENAME  Flags are set for 
+finaly production binary, not for local testing.
 
-```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64  go build -o <OUTPUT_FILENAME> cmd/pack3d/main.go```
+```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64  go build -o OUTPUT_FILENAME cmd/pack3d/main.go```
+
+Go Flags Meaning:
+ - CGO_ENABLED=0 : Go will not need to link to C code in this binary, 
+ - GOOOS=linux : Binary for linux only 
+ - GOARCH=amd64 : CPU we are targeting 
 
 ## pack3d - Installation, Codebase, Development and Deployment
 
