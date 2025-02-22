@@ -1,6 +1,5 @@
 # Contributing
 
-
 ### Commit 
 To tag it with the current commit, run:
 `go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
@@ -16,7 +15,7 @@ To tag it with the current commit, run:
 
 Unclear as to why these flags are required.
 
-```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 -o <OUTPUT> go build cmd/pack3d/main.go```
+```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64  go build -o <OUTPUT_FILENAME> cmd/pack3d/main.go```
 
 ## pack3d - Installation, Codebase, Development and Deployment
 
