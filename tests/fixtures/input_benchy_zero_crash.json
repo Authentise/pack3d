@@ -4,7 +4,7 @@
     "items": [
        {
             "filename": "../tests/fixtures/3DBenchyx2.stl",
-            "count": 100,
+            "count": 10,
             "scale": 1.0,
             "axes_lock": {
                 "theta_x": null,

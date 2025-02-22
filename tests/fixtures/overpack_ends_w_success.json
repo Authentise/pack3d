@@ -1,10 +1,10 @@
 {
-    "build_volume": [120, 62, 96],
+    "build_volume": [12, 62, 96],
     "spacing": 5,
     "items": [
        {
             "filename": "../tests/fixtures/cube.stl",
-            "count": 10,
+            "count": 20,
             "scale": 1.0,
             "axes_lock": {
                 "theta_x": null,

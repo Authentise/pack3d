@@ -68,6 +68,7 @@ func (p *Packer) loadConfig(config *Config) error {
 
 	for _, item := range config.ConfigItems {
 		object := Object{}
+		
 		// 1. load the mesh.
 		done := timed(fmt.Sprintf("loading mesh %s", item.Filename))
 		mesh, err := fauxgl.LoadMesh(item.Filename)
@@ -139,7 +140,7 @@ func (p *Packer) loadConfig(config *Config) error {
 }
 
 // Will attempt to pack model's items, optimistically initially trying them all
-// If this fails, and takes long (>10s), use binary search to find an acceptable
+// If this fails, and takes long (timeLimit seconds ), use binary search to find an acceptable
 // number of items to pack
 func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	buildDimensions := p.config.BuildVolume
@@ -147,27 +148,27 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	// Deviation = average length of a size / 32
 	// Prev comment (not sure what it means):
 	//     It is not the distance between objects. And it seems that it will not
-	//     reflect the distance.
+ 	//     reflect the distance.
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
 	start := time.Now()
-	timeLimit := 10.0
+	timeLimit := 20.0 // 20 seconds per rotation trial
 
 	// Model with max number of packed items
 	bestModel := NewModel()
 	bestPacked := 0
 
 	// Binary search params - refer to number of models packed
-	low := 0
-	high := len(p.model.Items)
+	minModelsToPack := 0
+	maxModelsToPack := len(p.model.Items)
 	// Optimistically set packing number as max number of items
-	mid := high
+	midModelsToPack := maxModelsToPack 
 
 	//  Mesh packing loop, to find the best STL mesh packing.
 	for {
 		// Attempt to pack
 		iterations := 0
-		if mid == 0 {
+		if midModelsToPack == 0 {
 			// Pack will crash if mid == 0
 			// Can't pack anything, so return
 			break
@@ -177,49 +178,49 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			nil, // no callback
 			p.sizes,
 			frameSize,
-			mid,
+			midModelsToPack,
 		)
 
 		// Iterations < 100 considered successful
 		if iterations < 100 {
-			fmt.Println("Succeeded")
-			fmt.Println("packing#, max#, min# is: ", mid, high, low)
+			fmt.Println("Succeeded (maybe pack more) ")
+			fmt.Println("packing goal #, max #, min # is: ", midModelsToPack, maxModelsToPack, minModelsToPack)
 			fmt.Println("-----------------------------------------")
 
-			bestPacked = mid
+			bestPacked = midModelsToPack
 			bestModel = p.model
 
 			// Binary search for higher number that will successfully pack
-			low = mid + 1
-			mid = int(math.Ceil(float64((low + high) / 2)))
+			minModelsToPack= midModelsToPack + 1
+			midModelsToPack = int(math.Ceil(float64((minModelsToPack + maxModelsToPack) / 2)))
 			start = time.Now()
 
 			// Since we optimistically set mid = high, this will be true if the initial
 			// run succeeds
-			if low > high {
+			if minModelsToPack > maxModelsToPack {
 				break
 			}
 			p.model.Reset()
 		} else {
 			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
 			p.model.Reset()
-			// If it has taken too long, binary search
+			// If it has taken too long, binary search (to pack smaller quantity)
 			// Otherwise, just retry
 			if time.Since(start).Seconds() > timeLimit {
-				fmt.Println("Failed")
-				fmt.Println("packing#, max#, min# is: ", mid, high, low)
+				fmt.Println(" Failed (maybe pack fewer)")
+				fmt.Println("packing goal # #, max #, min # is: ", midModelsToPack, maxModelsToPack, minModelsToPack)
 				fmt.Println("-----------------------------------")
 
 				// Binary search for lower packing number
-				high = mid - 1
-				mid = int(math.Ceil(float64((low + high) / 2)))
+				maxModelsToPack = midModelsToPack - 1
+				midModelsToPack = int(math.Ceil(float64((minModelsToPack + maxModelsToPack) / 2)))
 
 				// This array is a copy, this shouldn't do anything?
-				p.model.Transformation()[mid] = NULL_TRANSFORMATION
+				p.model.Transformation()[midModelsToPack] = NULL_TRANSFORMATION
 				// Reset initial start time
 				start = time.Now()
 
-				if low > high {
+				if minModelsToPack > maxModelsToPack {
 					break
 				}
 			}

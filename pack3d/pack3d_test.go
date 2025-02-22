@@ -83,10 +83,13 @@ func TestSc44515(t *testing.T) {
 	testPackingInputFile(t, "../tests/fixtures/sc44515.json")
 }
 
-func TestZeroPackingError(t *testing.T) {
-	testPackingInputFile(t, "../tests/fixtures/input_jenkins_test_3.json")
+// There was a rand.Intn(0) crash that the attached benchy regularly triggers. A test to make sure that happens and completes
+func TestZeroIndexCrashFixed(t *testing.T) {
+	testPackingInputFile(t, "../tests/fixtures/input_benchy_zero_crash.json")
 }
 
-func TestZeroPackingError2(t *testing.T) {
-	testPackingInputFile(t, "../tests/fixtures/input_jenkins_test_4.json")
+// There was a rand.Intn(0) crash that the attached benchy regularly triggers. 
+// Run that packing for many minutes, until failure, there is not way to fit that volume of prints into that build space
+func TestOverpackPackEnds(t *testing.T) {
+	testPackingInputFile(t, "../tests/fixtures/overpack_ends_w_success.json")
 }

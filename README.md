@@ -2,45 +2,72 @@
 
 Pack3d is the geometry packing tool for 3d printing  [here](https://github.com/Authentise/pack3d). Authentise's Pack3d codebase was forked from [Fogleman's pack3d](https://github.com/fogleman/pack3d). Pack3d is written in golang and the installation instructions can be found in the CONTRIBUTING.md
 
-Pack3d takes STL files and a JSON file of layout limits / complexities, and does stochastic (random re-tries) packing to pack as much as it can 
-into the given build volume. 
+Pack3d takes a JSON file of what STL files need to be packed, and returns a JSON file of what was possible to pack out of that. 
+
+The JSON file gives targets, build size, count of items, and limits / complexities of packing. Then pack3d will do stochastic (random re-tries) packing to pack as much as it can fit into the given build volume. 
 
 ## Installation
+To build binary to run in nautils (flows backend) see CONTRIBUTING.md
 
-See CONTRIBUTING.md
+## Debugging Build & Run 
 
-## Usage
+To create a binary for testing , run:
+ `go build -o <output path> cmd/pack3d/main.go`
+Pack3d may build a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
 
-Run `go run cmd/pack3d/main.go --help` for usage.
 
-## Build
+For usage info: 
+ `go run cmd/pack3d/main.go --help` 
 
-To create a binary, run:
+To run the default tests (it mauy take several minutes): 
+ `go test ./... ` 
+ This may 
 
-`go build -o <output path> cmd/pack3d/main.go`
+ To run a single test, by function name 
+```
+go test --run TestZeroPackingUntilPackFails -v  ./pack3d/pack3d_test.go
+```
 
-To tag it with the current commit, run:
+Invoking pack3d from the command line example:
+```
+pack3d --input_config_json_filename=input.json --output_packing_json_filename=output
+```
+Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d, 
+alongside the  JSON output.
 
-`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
 
-## Overview
-
-Pack3d consists of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
-
-### Pack3d command
-
-Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them. It returns a JSON file describing how the input items should be transformed to be packed, and their resulting volumes.
+### Pack3d Process 
 
 Pack3d is a multi-step process:
 1. Importing
-    We start by loading the 3d meshes of all the input models and applying scaling and manufacturing rotation. This is distinct from the rotation the packing algorithm applies.
+    Pack3d loads the 3d meshes of all the input models and applying scaling and manufacturing rotation. Some STL files are relative to the other, and will rotate / pack togehter as a grouping. This step is *distinct from* the rotation the packing algorithm applies later.
+
 2. Packing
-    Packing is done largely handled by the original forked code. This is done via an 'annealing' process, which tries multiple orientations and tweaking towards a minimum 'energy'.
-    This process can fail. In that case, we either try just restarting the process (might have gotten stuck in a local minimum), or, if it's taken too long, we reduce the number of items to pack. We use binary search to find the maximum number of items to pack.
+    Packing is largely handled by the original forked code. This is done via an 'annealing' process, which tries multiple orientations and tweaking towards a minimum 'energy'.
+    
+    The annealing process can fail. In that case, we either try just restarting the process (might have gotten stuck in a local minimum), or, if it's taken too long, we reduce the number of items to pack. We use binary search to find the maximum number of items to pack. In case of a crash, it may use a previous less-good packing as a fallback.
+
 3. Exporting
     We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
 
-### Input Schema
+### Known Issues
+
+List of issues discovered in 2024 update. These are limitations which are largely avoided if the build plate is sufficiently larger than the collective volume of items to pack.
+
+1. If the volume of the items to pack is close to the build plate volume, sometimes pack3d will silently exceed the build plates volume.
+    i. This is an issue with the internal algorithm of pack3d (i.e not Authentise code)
+
+2. ~If we can't pack all models, we use binary search to find the highest number we can. If there's a small number of models, the "candidate" in binary search might become 0. In that case, the program crashes.~
+
+3. We do not check the bounding volumes of the models we're packing compared to the build plate. This means:
+    a. We will attempt to pack items which will never fit on the build plate, when we should be exiting early.
+    b. We will waste attempts by packing too many items whose collective volume is greater than the build plate's.
+
+# Examples
+
+## Simple Input JSON Example
+
+Simple Example input JSON with notes 
 
 ```json
 
@@ -68,20 +95,12 @@ Pack3d is a multi-step process:
 ```
 
 
+## Complex Input JSON example:
 
-## Invoking pack3d from the command line - example
+The name `axes_lock` (aka `mfg_orientation`) indicate of X/Y/Z need to be in an exact orientation in the final \
+packed built plate. If set, that axis can't be changed during the annealing packing.
 
-```
-pack3d --input_config_json_filename=input.json --output_packing_json_filename=output
-```
-
-Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
-
-## Input example:
-
-#### NB: the name `axes_lock` is incorrect and it stands in place of `mfg_orientation`.
-
-```
+```json
 {
     "build_volume": [100, 100, 100],
     "spacing": 5,
@@ -125,16 +144,17 @@ Notice the absence of the extension of the `output` file. This is because an `st
 }
 ```
 
-## Output example (related to the input example):
+## Complex Output JSON Example:
+This complex output is related to the input example. 
 
 1. The co-packed objects have VolumeWithSpacing = 0. This is because their volume is already contemplated in the value of the main co-packing object's VolumeWithSpacing.
 
-2. Notice the scaling visible in the 3x3 rotation matrix.
+2. Notice the scaling is already built into the 3x3 rotation matrix.
 
 1. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.
 
 
-```
+```json
 [
     {
         "Filename": "tests/jenkins_tests/logo.stl",
@@ -166,21 +186,6 @@ Notice the absence of the extension of the `output` file. This is because an `st
         ],
         "VolumeWithSpacing": 76765.625
     },
-    .
-    .
-    .
-    .
-]
 ]
 ```
 
-### Known Issues
-
-List of issues discovered in 2024 update. These are limitations which are largely avoided if the build plate is sufficiently larger than the collective volume of items to pack.
-
-1. If the volume of the items to pack is close to the build plate volume, sometimes pack3d will happily exceed the build plates volume.
-    i. This is an issue with the internal algorithm of pack3d (i.e not Authentise code)
-2. ~If we can't pack all models, we use binary search to find the highest number we can. If there's a small number of models, the "candidate" in binary search might become 0. In that case, the program crashes.~
-3. We do not check the bounding volumes of the models we're packing compared to the build plate. This means:
-    a. We will attempt to pack items which will never fit on the build plate, when we should be exiting early.
-    b. We will waste attempts by packing too many items whose collective volume is greater than the build plate's.

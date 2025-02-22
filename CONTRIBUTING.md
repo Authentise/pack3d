@@ -1,5 +1,12 @@
 # Contributing
 
+
+### Commit 
+To tag it with the current commit, run:
+`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
+
+
+
 ## Local Go Install (preferrable)
 
 1. Install [Go 1.22](https://go.dev/doc/install)
