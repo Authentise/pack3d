@@ -1,15 +1,46 @@
 # Contributing
+Notes for developers of pack3d, not so useful for deployment .
 
-## Local Go Install (preferrable)
+
+# Local Go Install (preferrable)
 
 1. Install [Go 1.22](https://go.dev/doc/install)
 2. Run `pack3d` with `go run cmd/pack3d/main.go`
 
+# Build Details 
+
+## Overview
+Pack3d generates of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
+
+
+## Build for local testing 
+
+The simple buildl command: 
+`go build -o <output path> cmd/pack3d/main.go`
+
+To built the git tag into the filename with the current commit, run:
+`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
+
+
 ## Build for production:
 
-Unclear as to why these flags are required.
+This is the command to build a final biary as OUTPUT_FILENAME  Flags are set for 
+finaly production binary, not for local testing.
 
-```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 -o <OUTPUT> go build cmd/pack3d/main.go```
+```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 -o <OUTPUT_FILENAME> go build cmd/pack3d/main.go```
+
+Go Flags Meaning:
+ - CGO_ENABLED=0 : Go will not need to link to C code in this binary, 
+ - GOOOS=linux : Binary for linux only 
+ - GOARCH=amd64 : CPU we are targeting 
+
+## Usage
+
+To run the final binary at the command line :
+`pack3d --input_config_json_filename=input.json --output_packing_json_filename=output`
+
+To run the code in the go debugging environment :
+`go run cmd/pack3d/main.go <CMD_LINE_OPTIONS`
 
 ## pack3d - Installation, Codebase, Development and Deployment
 

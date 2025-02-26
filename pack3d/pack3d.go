@@ -151,7 +151,8 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
 	start := time.Now()
-	timeLimit := 10.0
+	TIME_LIMIT:= 10.0 //10 seconds per Stochastic try , then start again
+	TRY_LIMIT := 100 // max number of Stochastic tries before quitting
 
 	// Model with max number of packed items
 	bestModel := NewModel()
@@ -181,21 +182,21 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 		)
 
 		// Iterations < 100 considered successful
-		if iterations < 100 {
-			fmt.Println("Succeeded")
-			fmt.Println("packing#, max#, min# is: ", mid, high, low)
+		if iterations <  TRY_LIMIT {
+			fmt.Println("Succeeded (maybe pack more next time) ")
+			fmt.Println("packing goal #, max#, min# is: ", mid, high, low)
 			fmt.Println("-----------------------------------------")
 
 			bestPacked = mid
 			bestModel = p.model
 
-			// Binary search for higher number that will successfully pack
+			//  if success, 'bisect' extend "models to pack" count 
 			low = mid + 1
 			mid = int(math.Ceil(float64((low + high) / 2)))
 			start = time.Now()
 
 			// Since we optimistically set mid = high, this will be true if the initial
-			// run succeeds
+			// run succeeds, and exit immedately as a success
 			if low > high {
 				break
 			}
@@ -203,11 +204,11 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 		} else {
 			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
 			p.model.Reset()
-			// If it has taken too long, binary search
-			// Otherwise, just retry
-			if time.Since(start).Seconds() > timeLimit {
-				fmt.Println("Failed")
-				fmt.Println("packing#, max#, min# is: ", mid, high, low)
+			
+			fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
+			if time.Since(start).Seconds() > TIME_LIMIT {
+				//  if failed, and past time limit, 'bisect' shrink "models to pack" count 
+				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
 				fmt.Println("-----------------------------------")
 
 				// Binary search for lower packing number
