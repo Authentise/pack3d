@@ -1,32 +1,26 @@
 # Pack3d
 
-Pack3d is a geometry packing tool for packing 3d model files on a build plate.
-
-## Installation
-
-See CONTRIBUTING.md
+Pack3d is the geometry packing tool for 3d printing  [here](https://github.com/Authentise/pack3d). Authentise's Pack3d codebase was forked from [Fogleman's pack3d](https://github.com/fogleman/pack3d). Pack3d is written in golang and the installation instructions can be found in the CONTRIBUTING.md
 
 ## Usage
 
-Run `go run cmd/pack3d/main.go --help` for usage.
+Run `go run cmd/pack3d/main.go --help` for command line help.
 
-## Build
 
-To create a binary, run:
+The most common command line usage is as:
+`pack3d --input_config_json_filename=input.json --output_packing_json_filename=output`
 
-`go build -o <output path> cmd/pack3d/main.go`
+Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them. 
 
-To tag it with the current commit, run:
+Then pack3d will do stochastic (random re-tries) packing to pack as much as it can fit into the given build volume. 
 
-`go build -o bin/pack3d-$(git rev-parse --short HEAD) cmd/pack3d/main.go`
+It returns a JSON file describing how the input items should be transformed to be packed, and their resulting volumes. Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
 
-## Overview
+## Build & Dev Tools Installation
 
-Pack3d consists of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
+See CONTRIBUTING.md
 
 ### Pack3d command
-
-Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them. It returns a JSON file describing how the input items should be transformed to be packed, and their resulting volumes.
 
 Pack3d is a multi-step process:
 1. Importing
@@ -37,7 +31,8 @@ Pack3d is a multi-step process:
 3. Exporting
     We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
 
-### Input Schema
+# Examples 
+## Example Simple Input JSON
 
 ```json
 
@@ -65,20 +60,11 @@ Pack3d is a multi-step process:
 ```
 
 
+## Example rotation-locked Input JSON:
 
-## Invoking pack3d from the command line - example
+The name `axes_lock` (aka `mfg_orientation`) indicate of X/Y/Z need to be in an exact orientation in the final \ packed built plate. If set, that axis can't be changed during the annealing packing.
 
-```
-pack3d --input_config_json_filename=input.json --output_packing_json_filename=output
-```
-
-Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
-
-## Input example:
-
-#### NB: the name `axes_lock` is incorrect and it stands in place of `mfg_orientation`.
-
-```
+``` json
 {
     "build_volume": [100, 100, 100],
     "spacing": 5,
@@ -122,11 +108,11 @@ Notice the absence of the extension of the `output` file. This is because an `st
 }
 ```
 
-## Output example (related to the input example):
+## Example rotation-locked output JSON:
 
 1. The co-packed objects have VolumeWithSpacing = 0. This is because their volume is already contemplated in the value of the main co-packing object's VolumeWithSpacing.
 
-2. Notice the scaling visible in the 3x3 rotation matrix.
+2. Notice the scaling is already calculated into the 4x4 translation & rotation matrix.
 
 3. pack3d can either fail to pack a set of objects entirely - an error status is displayed in the command line, or pack3d can manage to pack fewer objects in such case the objects that did not make it into the build volume will have a null Transformation = `[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]`.
 
