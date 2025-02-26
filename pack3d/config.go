@@ -19,6 +19,25 @@ func (c *Config) TotalItems() int {
 	return total
 }
 
+// Dedupes a config item array by Filename, and increments Count
+func (c *Config) Dedupe() {
+	// Array of deduped config items
+	deduped := make([]ConfigItem, 0)
+	// Filenames by their resultant index in the deduped array
+	filenames := make(map[string]int)
+
+	for _, item := range c.ConfigItems {
+		index, exists := filenames[item.Filename]
+		if !exists {
+			deduped = append(deduped, item)
+			filenames[item.Filename] = len(deduped) - 1
+		} else {
+			deduped[index].Count += 1
+		}
+	}
+	c.ConfigItems = deduped
+}
+
 type ConfigItem struct {
 	Filename string    `json:"filename"`
 	Scale    float64   `json:"scale"`

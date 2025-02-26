@@ -52,8 +52,10 @@ type Packer struct {
 	sizes  []fauxgl.Vector
 }
 
+// This will dedupe config items automatically
 func NewPacker(config *Config) (Packer, error) {
 	packer := Packer{}
+	config.Dedupe()
 	err := packer.loadConfig(config)
 	return packer, err
 }
