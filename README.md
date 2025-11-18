@@ -20,6 +20,10 @@ It returns a JSON file describing how the input items should be transformed to b
 
 See CONTRIBUTING.md
 
+### Go Version Requirement
+
+This project requires **Go 1.23.8 or later** to compile. This version requirement was updated to address CVE-2025-22871, a security vulnerability in Go's standard library `net/http` package that was fixed in Go 1.23.8. The binary must be compiled with Go 1.23.8+ to ensure the security fix is included.
+
 ### Pack3d command
 
 Pack3d is a multi-step process:
