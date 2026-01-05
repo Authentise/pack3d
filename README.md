@@ -10,9 +10,9 @@ Run `go run cmd/pack3d/main.go --help` for command line help.
 The most common command line usage is as:
 `pack3d --input_config_json_filename=input.json --output_packing_json_filename=output`
 
-Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them. 
+Pack3d takes an input JSON file describing the size of a build plate, a list of items to pack, and the spacing between them.
 
-Then pack3d will do stochastic (random re-tries) packing to pack as much as it can fit into the given build volume. 
+Then pack3d will do stochastic (random re-tries) packing to pack as much as it can fit into the given build volume.
 
 It returns a JSON file describing how the input items should be transformed to be packed, and their resulting volumes. Notice the absence of the extension of the `output` file. This is because an `stl` file could optionally also be written as output by pack3d.
 
@@ -35,7 +35,21 @@ Pack3d is a multi-step process:
 3. Exporting
     We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
 
-# Examples 
+## Testing
+
+The packing algorithm is stochastic (it uses `math/rand`). Our regression tests in `pack3d/pack3d_test.go` lock the global RNG seed (`rand.Seed(1)`) so that:
+
+- **Output shape is stable**: the output JSON is decoded and must have `len(output) == config.TotalItems()`.
+  - Note: `TotalItems()` includes `copack` entries. A config item with `count = N` and `copack` with `K` files produces `N * (1 + K)` packable items and therefore the same number of output entries.
+- **Packed count is stable**: a fixture-specific `expectedPacked` value is asserted by counting how many output transformations are non-zero.
+
+Running tests:
+
+- **Default**: `go test ./...`
+- **Short**: `go test ./... -short` (skips slow fixtures, such as `TestCh32838`)
+- **Long-running**: `PACK3D_LONG_TESTS=1 go test ./...` (enables tests gated behind `PACK3D_LONG_TESTS`)
+
+# Examples
 ## Example Simple Input JSON
 
 ```json
@@ -48,14 +62,14 @@ Pack3d is a multi-step process:
             "filename": "logo.stl", // Path to model file
             "count": 3, // Number of this item to pack
             "scale": 2.0, // Scale this item
-            "axes_lock": [ // Fixed angles if set, otherwise the packing algorithm is free to rotate models about this axis
+            "axes_lock": { // Fixed angles if set, otherwise the packing algorithm is free to rotate models about this axis
                 "theta_x": 0.0,
                 "theta_y": 0.0,
                 "theta_z": null
-            ], // If not supplied, treated as all values are null
+            }, // If not supplied, treated as all values are null
             "copack": [
                 {
-                    "filename": "tests/jenkins_tests/corner.stl" // List of file names to copack
+                    "filename": "tests/jenkins_tests/corner.stl" // List of file names to copack (packed independently)
                 }
             ], // If not supplied, treated as empty
         },
@@ -77,11 +91,11 @@ The name `axes_lock` (aka `mfg_orientation`) indicate of X/Y/Z need to be in an 
             "filename": "tests/jenkins_tests/logo.stl",
             "count": 3,
             "scale": 2.0,
-            "axes_lock": [
+            "axes_lock": {
                 "theta_x": 0.0,
                 "theta_y": 0.0,
                 "theta_z": 0.0
-            ],
+            },
             "copack": [
                 {
                     "filename": "tests/jenkins_tests/corner.stl"
@@ -92,21 +106,21 @@ The name `axes_lock` (aka `mfg_orientation`) indicate of X/Y/Z need to be in an 
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 2,
             "scale": 4.0,
-            "axes_lock": [
+            "axes_lock": {
                 "theta_x": 0.0,
                 "theta_y": 0.0,
                 "theta_z": 0.0
-            ],
+            }
         },
         {
             "filename": "tests/jenkins_tests/cube.stl",
             "count": 5,
             "scale": 1.0,
-            "axes_lock": [
+            "axes_lock": {
                 "theta_x": 0.0,
                 "theta_y": 0.0,
                 "theta_z": 0.0
-            ],
+            }
         }
     ]
 }

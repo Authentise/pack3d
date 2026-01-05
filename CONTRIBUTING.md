@@ -2,20 +2,20 @@
 Notes for developers of pack3d, not so useful for deployment .
 
 
-# Local Go Install (preferrable)
+# Local Go Install (preferable)
 
-1. Install [Go 1.22](https://go.dev/doc/install)
+1. Install [Go 1.23.8 or later](https://go.dev/doc/install)
 2. Run `pack3d` with `go run cmd/pack3d/main.go`
 
-# Build Details 
+# Build Details
 
 ## Overview
 Pack3d generates of a number of binaries, found in `/cmd` folder. Of these, only `pack3d` is currently used.
 
 
-## Build for local testing 
+## Build for local testing
 
-The simple buildl command: 
+The simple build command:
 `go build -o <output path> cmd/pack3d/main.go`
 
 To built the git tag into the filename with the current commit, run:
@@ -24,15 +24,15 @@ To built the git tag into the filename with the current commit, run:
 
 ## Build for production:
 
-This is the command to build a final biary as OUTPUT_FILENAME  Flags are set for 
-finaly production binary, not for local testing.
+This is the command to build a final binary as OUTPUT_FILENAME. Flags are set for
+final production binary, not for local testing.
 
 ```env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 -o <OUTPUT_FILENAME> go build cmd/pack3d/main.go```
 
 Go Flags Meaning:
- - CGO_ENABLED=0 : Go will not need to link to C code in this binary, 
- - GOOOS=linux : Binary for linux only 
- - GOARCH=amd64 : CPU we are targeting 
+ - CGO_ENABLED=0 : Go will not need to link to C code in this binary,
+ - GOOOS=linux : Binary for linux only
+ - GOARCH=amd64 : CPU we are targeting
 
 ## Usage
 
@@ -41,6 +41,19 @@ To run the final binary at the command line :
 
 To run the code in the go debugging environment :
 `go run cmd/pack3d/main.go <CMD_LINE_OPTIONS`
+
+## Tests
+
+Run the full suite:
+`go test ./...`
+
+Run the suite in short mode (skips slow fixtures such as `TestCh32838`):
+`go test ./... -short`
+
+Enable long-running tests:
+`PACK3D_LONG_TESTS=1 go test ./...`
+
+Note: Our regression tests lock the global RNG seed (`math/rand`) so fixture packed-count assertions are repeatable.
 
 ## pack3d - Installation, Codebase, Development and Deployment
 
@@ -206,7 +219,7 @@ The ```func main()``` performs command line's arguments parsing and related acti
 - STL geometries loading and addition of each loaded geometry to the pack3d model: ```model.Add(mesh, bvhDetail, count, spacing)```
 - packing of the pack3d model.
   - ```model.Pack(annealingIterations, nil, singleStlSize, frameSize, packItemNum)```
-  - there is a time limit to break out if the packing algotithm is struggling.
+  - there is a time limit to break out if the packing algorithm is struggling.
   - binary search. Uncommenting some code allows serving up an error-related json file.
 - json data generation. More specifically a list of transformations applied to each original model inside of the build volume.
 - creation of STL pack3d model file - requires uncommenting some code. ```model.Mesh().SaveSTL( ... )```

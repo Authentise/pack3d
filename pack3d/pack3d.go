@@ -191,7 +191,10 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
 			p.model.Reset()
 
-			fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
+			// Output once
+			if iterations == 101 {
+				fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
+			}
 			if time.Since(start).Seconds() > TIME_LIMIT {
 				//  if failed, and past time limit, 'bisect' shrink "models to pack" count
 				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
@@ -277,6 +280,13 @@ func Pack(config *Config) (*PackingOutput, error) {
 	meshJson, err := json.Marshal(transformations)
 	if err != nil {
 		return nil, err
+	}
+
+	// The JSON output always includes all items (packed and unpacked, with null
+	// transformations for unpacked ones). However, the STL output is for debugging
+	// and should only include the items that actually packed.
+	if itemsPacked < len(model.Items) {
+		model.Items = model.Items[:itemsPacked]
 	}
 
 	// Print fill ratio to stdout
