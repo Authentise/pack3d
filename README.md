@@ -114,7 +114,7 @@ The name `axes_lock` (aka `mfg_orientation`) indicate of X/Y/Z need to be in an 
 
 ## Example rotation-locked output JSON:
 
-1. The co-packed objects have VolumeWithSpacing = 0. This is because their volume is already contemplated in the value of the main co-packing object's VolumeWithSpacing.
+1. `copack` items are treated as additional, independently-packable items. Each file gets its own `Transformation` and `VolumeWithSpacing`.
 
 2. Notice the scaling is already calculated into the 4x4 translation & rotation matrix.
 

@@ -38,9 +38,6 @@ type Object struct {
 	scale          fauxgl.Matrix
 	mfgRotation    fauxgl.Matrix
 	transformation TransMap
-
-	// Empty if no copacking occured
-	copackedFiles []string
 }
 
 type Packer struct {
@@ -67,71 +64,60 @@ func (p *Packer) loadConfig(config *Config) error {
 	p.sizes = make([]fauxgl.Vector, 0, len(config.ConfigItems))
 
 	for _, item := range config.ConfigItems {
-		object := Object{}
-		// 1. load the mesh.
-		done := timed(fmt.Sprintf("loading mesh %s", item.Filename))
-		mesh, err := fauxgl.LoadMesh(item.Filename)
-		if err != nil {
-			return err
+		filenames := []string{item.Filename}
+		for _, cp := range item.Copack {
+			filenames = append(filenames, cp.Filename)
 		}
-		done()
-		if item.Copack != nil {
-			copackedFiles := []string{}
-			for _, cp := range item.Copack {
-				done = timed(fmt.Sprintf("loading the co-packed mesh %s", cp.Filename))
-				coMesh, err := fauxgl.LoadMesh(cp.Filename)
-				if err != nil {
-					return err
-				}
-				done()
 
-				// add coMesh to the main mesh. The "child"'s mesh is merged into its parent's.
-				mesh.Add(coMesh)
-				copackedFiles = append(copackedFiles, cp.Filename)
+		for _, filename := range filenames {
+			object := Object{}
+
+			// 1. load the mesh.
+			done := timed(fmt.Sprintf("loading mesh %s", filename))
+			mesh, err := fauxgl.LoadMesh(filename)
+			if err != nil {
+				return err
 			}
-			object.copackedFiles = copackedFiles
-		}
-		// 2. mesh centering.
-		mesh.Center()
-
-		// 3. apply the scaling to the mesh.
-		//    Notice that if scaling is to be applied, it is done
-		//    before the computation of the BoundingBox and volume.
-		object.scale = fauxgl.Scale(fauxgl.V(item.Scale, item.Scale, item.Scale))
-		if item.Scale != 1.0 {
-			done = timed("scaling mesh")
-			mesh.Transform(object.scale)
 			done()
+
+			// 2. mesh centring.
+			mesh.Center()
+
+			// 3. apply scaling (before bounding box / volume).
+			object.scale = fauxgl.Scale(fauxgl.V(item.Scale, item.Scale, item.Scale))
+			if item.Scale != 1.0 {
+				done = timed("scaling mesh")
+				mesh.Transform(object.scale)
+				done()
+			}
+
+			// 4. apply manufacturing rotation (before bounding box / volume).
+			// IMPORTANT: do not confuse manufacturing orientation with the packing
+			// orientations from the annealing further on.
+			object.mfgRotation = item.ManufacturingOrientation()
+			mesh.Transform(object.mfgRotation)
+
+			// 5. sizes / bookkeeping for output.
+			size := mesh.BoundingBox().Size()
+			object.filename = filename
+
+			for range item.Count {
+				p.objects = append(p.objects, object)
+				p.sizes = append(p.sizes, size)
+			}
+
+			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
+			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
+
+			// 6. coarse approx of its volume (used for deviation).
+			p.volume += mesh.BoundingBox().Volume() * float64(item.Count)
+
+			done = timed("building bvh tree")
+			p.model.Add(mesh, BVH_DETAIL, item.Count, config.Spacing/2, item.AvailableRotations())
+			done()
+
+			fmt.Println("______________________________________________________")
 		}
-
-		// 4. apply the manufacturing rotation mesh.
-		//    Notice that this is done before the computation of the BoundingBox and volume.
-		// IMPORTANT: do not confuse manufacturing orientation with the packing
-		//            orientations from the orientations provided by the annealing further on.
-		object.mfgRotation = item.ManufacturingOrientation()
-		mesh.Transform(object.mfgRotation)
-
-		// 5. update all the copies mesh for the json output.
-		size := mesh.BoundingBox().Size()
-		object.filename = item.Filename
-
-		for range item.Count {
-			p.objects = append(p.objects, object)
-			p.sizes = append(p.sizes, size)
-		}
-
-		fmt.Printf("  %d triangles\n", len(mesh.Triangles))
-		fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
-
-		// 6. coarse approx of its volume.
-		p.volume += mesh.BoundingBox().Volume()
-
-		done = timed("building bvh tree")
-
-		p.model.Add(mesh, BVH_DETAIL, item.Count, config.Spacing/2, item.AvailableRotations())
-		done()
-
-		fmt.Println("______________________________________________________")
 
 	}
 
@@ -151,8 +137,8 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
 	start := time.Now()
-	TIME_LIMIT:= 10.0 //10 seconds per Stochastic try , then start again
-	TRY_LIMIT := 100 // max number of Stochastic tries before quitting
+	TIME_LIMIT := 10.0 //10 seconds per Stochastic try , then start again
+	TRY_LIMIT := 100   // max number of Stochastic tries before quitting
 
 	// Model with max number of packed items
 	bestModel := NewModel()
@@ -182,7 +168,7 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 		)
 
 		// Iterations < 100 considered successful
-		if iterations <  TRY_LIMIT {
+		if iterations < TRY_LIMIT {
 			fmt.Println("Succeeded (maybe pack more next time) ")
 			fmt.Println("packing goal #, max#, min# is: ", mid, high, low)
 			fmt.Println("-----------------------------------------")
@@ -190,7 +176,7 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			bestPacked = mid
 			bestModel = p.model
 
-			//  if success, 'bisect' extend "models to pack" count 
+			//  if success, 'bisect' extend "models to pack" count
 			low = mid + 1
 			mid = int(math.Ceil(float64((low + high) / 2)))
 			start = time.Now()
@@ -204,10 +190,10 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 		} else {
 			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
 			p.model.Reset()
-			
+
 			fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
 			if time.Since(start).Seconds() > TIME_LIMIT {
-				//  if failed, and past time limit, 'bisect' shrink "models to pack" count 
+				//  if failed, and past time limit, 'bisect' shrink "models to pack" count
 				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
 				fmt.Println("-----------------------------------")
 
@@ -266,12 +252,6 @@ func (p *Packer) generateTransformations(model *Model, itemsPacked int) ([]Trans
 		} else {
 			// Otherwise, set as empty matrix
 			transMaps = append(transMaps, TransMap{object.filename, transMatrix, 0})
-		}
-
-		// Add the co-packed meshes to transMaps.
-		for _, filename := range object.copackedFiles {
-			// Volume = 0 since it's already included in the parent
-			transMaps = append(transMaps, TransMap{filename, transMatrix, 0})
 		}
 	}
 	done()
