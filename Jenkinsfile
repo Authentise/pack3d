@@ -4,7 +4,7 @@ pipeline {
     }
 
     stages {
-        stage('Go tests (short)') {
+        stage('Go tests') {
             steps {
                 sh 'go test ./...'
             }
