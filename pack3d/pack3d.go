@@ -137,8 +137,8 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
 	start := time.Now()
-	TIME_LIMIT := 10.0 //10 seconds per Stochastic try , then start again
-	TRY_LIMIT := 100   // max number of Stochastic tries before quitting
+	TIME_LIMIT := 12.0 // 12 seconds per stochastic try, then start again
+	TRY_LIMIT := MAX_MOVE_ATTEMPTS // max number of move attempts before quitting
 
 	// Model with max number of packed items
 	bestModel := NewModel()

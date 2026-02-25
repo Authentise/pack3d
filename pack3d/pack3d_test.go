@@ -30,12 +30,12 @@ func countPacked(transMaps []pack3d.TransMap) int {
 	return packed
 }
 
-func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
+func testPackingInputFileWithSeed(t *testing.T, input string, expectedPacked int, seed int64) {
 	// The packing algorithm uses global randomness (math/rand). Seed it so that
 	// "expectedPacked" assertions are repeatable across runs.
 	//
 	// Note: Tests are not marked t.Parallel, so a global seed is safe here.
-	rand.Seed(1)
+	rand.Seed(seed)
 
 	config, err := pack3d.ParseConfig(input)
 
@@ -64,6 +64,42 @@ func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
 	if gotPacked != expectedPacked {
 		t.Fatalf("Unexpected number packed: got %d, want %d", gotPacked, expectedPacked)
 	}
+}
+
+func testPackingInputFileAtLeastWithSeed(t *testing.T, input string, minPacked int, seed int64) {
+	// The packing algorithm uses global randomness (math/rand). Seed it so that
+	// assertions are repeatable across runs.
+	//
+	// Note: Tests are not marked t.Parallel, so a global seed is safe here.
+	rand.Seed(seed)
+
+	config, err := pack3d.ParseConfig(input)
+	if err != nil {
+		t.Fatalf("Failed to load config: %s", err)
+	}
+
+	output, err := pack3d.Pack(config)
+	if err != nil {
+		t.Fatalf("Failed to pack config: %s", err)
+	}
+
+	var transMaps []pack3d.TransMap
+	if err := json.Unmarshal(output.MeshJSON, &transMaps); err != nil {
+		t.Fatalf("Failed to decode packing output JSON: %s", err)
+	}
+
+	if len(transMaps) != config.TotalItems() {
+		t.Fatalf("Unexpected number of output items: got %d, want %d", len(transMaps), config.TotalItems())
+	}
+
+	gotPacked := countPacked(transMaps)
+	if gotPacked < minPacked {
+		t.Fatalf("Unexpected number packed: got %d, want at least %d", gotPacked, minPacked)
+	}
+}
+
+func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
+	testPackingInputFileWithSeed(t, input, expectedPacked, 1)
 }
 
 func TestCoPack(t *testing.T) {
@@ -97,8 +133,8 @@ func TestCh32838(t *testing.T) {
 	}
 	// Overflow fixtures is sensitive to behavioural changes.
 	// With copack items treated as independently-packable and locked seed
-	// the packed count should remain stable at 79
-	testPackingInputFile(t, "../tests/fixtures/ch32838.json", 79)
+	// the packed count should not regress below 79
+	testPackingInputFileAtLeastWithSeed(t, "../tests/fixtures/ch32838.json", 79, 1)
 }
 
 func TestSc46802(t *testing.T) {
@@ -107,6 +143,10 @@ func TestSc46802(t *testing.T) {
 
 func TestSc44515(t *testing.T) {
 	testPackingInputFile(t, "../tests/fixtures/sc44515.json", 17)
+}
+
+func TestSc114050(t *testing.T) {
+	testPackingInputFileWithSeed(t, "../tests/sc114050/sc114050.json", 14, 2)
 }
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers. A test to make sure that happens and completes

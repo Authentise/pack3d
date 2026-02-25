@@ -39,7 +39,7 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 		}
 		undo, ntime := state.DoMove(singleStlSize, frameSize, packItemNum)
 		cycleIndex = ntime
-		if ntime >= 100{
+		if ntime >= MAX_MOVE_ATTEMPTS {
 			return bestState, ntime
 		}
 		energy := state.Energy()

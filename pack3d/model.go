@@ -284,7 +284,7 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 
 		item.RotationId = undo.Rotation
 		item.Translation = undo.Translation
-		if j >= 100 {
+		if j >= MAX_MOVE_ATTEMPTS {
 			break
 		}
 	}
