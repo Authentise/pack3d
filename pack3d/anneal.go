@@ -29,19 +29,36 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 	bestEnergy := state.Energy()
 	previousEnergy := bestEnergy
 	rate := steps / 200
+
+	// A single stuck item should not abort the entire anneal. Allow
+	// several consecutive DoMove failures so the loop can sample
+	// different items before giving up. The tolerance scales with
+	// item count (more items → more chances to find a moveable one)
+	// but stays small to avoid excessive work when the packing is
+	// genuinely impossible.
+	maxConsecFail := packItemNum * MAX_STUCK_RATIO
+	if maxConsecFail < 1 {
+		maxConsecFail = 1
+	}
+	consecutiveFailures := 0
+
 	var cycleIndex int
 	for step := 0; step < steps; step++ {
 		pct := float64(step) / float64(steps-1)
 		temp := maxTemp * math.Exp(factor*pct)
-		// every 200 steps show progress
 		if step%rate == 0 {
 			showProgress(step, steps, bestEnergy, time.Since(start).Seconds())
 		}
 		undo, ntime := state.DoMove(singleStlSize, frameSize, packItemNum)
 		cycleIndex = ntime
 		if ntime >= MAX_MOVE_ATTEMPTS {
-			return bestState, ntime
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecFail {
+				return bestState, ntime
+			}
+			continue
 		}
+		consecutiveFailures = 0
 		energy := state.Energy()
 		change := energy - previousEnergy
 		if change > 0 && math.Exp(-change/temp) < rand.Float64() {

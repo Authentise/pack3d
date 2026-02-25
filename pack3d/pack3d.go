@@ -167,7 +167,6 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			mid,
 		)
 
-		// Iterations < 100 considered successful
 		if iterations < TRY_LIMIT {
 			fmt.Println("Succeeded (maybe pack more next time) ")
 			fmt.Println("packing goal #, max#, min# is: ", mid, high, low)
@@ -176,37 +175,29 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			bestPacked = mid
 			bestModel = p.model
 
-			//  if success, 'bisect' extend "models to pack" count
 			low = mid + 1
 			mid = int(math.Ceil(float64((low + high) / 2)))
 			start = time.Now()
 
 			// Since we optimistically set mid = high, this will be true if the initial
-			// run succeeds, and exit immedately as a success
+			// run succeeds, and exit immediately as a success
 			if low > high {
 				break
 			}
 			p.model.Reset()
 		} else {
-			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
+			// Annealing could not find valid moves — packing is too dense
+			// for this many items. Retry with a fresh random layout until
+			// the time budget for this target count is exhausted.
 			p.model.Reset()
 
-			// Output once
-			if iterations == 101 {
-				fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
-			}
 			if time.Since(start).Seconds() > TIME_LIMIT {
-				//  if failed, and past time limit, 'bisect' shrink "models to pack" count
+				fmt.Printf("Could not pack %d items after %.0fs, reducing target.\n", mid, TIME_LIMIT)
 				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
 				fmt.Println("-----------------------------------")
 
-				// Binary search for lower packing number
 				high = mid - 1
 				mid = int(math.Ceil(float64((low + high) / 2)))
-
-				// This array is a copy, this shouldn't do anything?
-				p.model.Transformation()[mid] = NULL_TRANSFORMATION
-				// Reset initial start time
 				start = time.Now()
 
 				if low > high {
