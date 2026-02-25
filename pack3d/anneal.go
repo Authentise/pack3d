@@ -56,6 +56,7 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 			if consecutiveFailures >= maxConsecFail {
 				return bestState, ntime
 			}
+			step-- // failed DoMove didn't change state; don't consume temperature budget
 			continue
 		}
 		consecutiveFailures = 0
