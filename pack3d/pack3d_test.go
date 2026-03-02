@@ -138,6 +138,8 @@ func TestCh32838(t *testing.T) {
 }
 
 func TestSc46802(t *testing.T) {
+	// This fixture verifies the nesting-prevention fix (sc-46802).
+	// All 4 items (1 large bust + 3 small busts) must pack without nesting.
 	testPackingInputFile(t, "../tests/fixtures/sc46802.json", 4)
 }
 

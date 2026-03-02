@@ -196,7 +196,7 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 	var points []fauxgl.Vector
 	var point fauxgl.Vector
 
-	transformation := m.Transformation()[i]
+	transformation := m.Items[i].Matrix()
 	size := singleStlSize[i]
 	halfFrame := frameSize.MulScalar(0.5)
 	halfSize := size.MulScalar(0.5)
@@ -269,13 +269,18 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 	for {
 		j += 1
 		if rand.Intn(4) == 0 {
-			// rotate, 1/4 of probability
-			item.RotationId = rand.Intn(len(item.AvailableRotations)) // do a random rotation, it's a random index
+			item.RotationId = rand.Intn(len(item.AvailableRotations))
 		} else {
-			// translate, 3/4 of probability
-			offset := Axis(rand.Intn(3) + 1).Vector()                   // Pick a random axis
-			offset = offset.MulScalar(rand.NormFloat64() * m.Deviation) // A random translation in x or y or z (vector)
-			item.Translation = item.Translation.Add(offset)             // add offset to translation
+			// In tight configurations most large translations collide.
+			// After half the budget is spent, switch to finer-grained
+			// moves that are more likely to find nearby valid positions.
+			deviation := m.Deviation
+			if j > MAX_MOVE_ATTEMPTS/2 {
+				deviation *= 0.25
+			}
+			offset := Axis(rand.Intn(3) + 1).Vector()
+			offset = offset.MulScalar(rand.NormFloat64() * deviation)
+			item.Translation = item.Translation.Add(offset)
 		}
 
 		if m.ValidChange(i) && m.ValidBound(i, singleStlSize, frameSize) {
