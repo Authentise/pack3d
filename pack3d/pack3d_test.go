@@ -116,6 +116,11 @@ func TestZeroIndexCrashFixed(t *testing.T) {
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers.
 // Run that packing for many minutes, until failure, there is not way to fit that volume of prints into that build space
+func TestLogoCubeCorner(t *testing.T) {
+	// Pack logo, cube, and corner into 7.5x7.5x5 build volume with spacing 2.
+	testPackingInputFile(t, "../tests/fixtures/logo_cube_corner.json", 2)
+}
+
 func TestOverpackPackEnds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping long-running overpack regression test in -short mode")
