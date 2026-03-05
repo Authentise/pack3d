@@ -32,12 +32,18 @@ Pack3d is a multi-step process:
 2. Packing
     Packing is done largely handled by the original forked code. This is done via an 'annealing' process, which tries multiple orientations and tweaking towards a minimum 'energy'.
     This process can fail. In that case, we either try just restarting the process (might have gotten stuck in a local minimum), or, if it's taken too long, we reduce the number of items to pack. We use binary search to find the maximum number of items to pack.
+
+    **Step-size scaling** (`pack3d/anneal.go`): When packing is dense or the solver is in a shallow minimum, `DoMove` often needs many attempts to propose a valid move (most proposals are rejected for intersection, containment, or out-of-bounds). Only tiny moves succeed at the base step size, so the solver creeps slowly and may never escape. The annealer tracks how often moves "struggle" (exceed a threshold of internal attempts) over a window of 200 steps. If >= 30% of moves struggle, it temporarily increases the translation step size (`Deviation`) by 1.5x, capped at 4x the base. If <= 10% struggle, it scales back down. This adaptive behaviour helps escape dense regions and shallow minima without degrading behaviour when packing is progressing well.
+
+    **Progress log throttling** (`pack3d/anneal.go`): The annealing loop prints progress (percentage, energy, elapsed time) to stdout. To avoid flooding the console during long runs, progress is throttled: at least 5 seconds must pass between prints, and at most 10 progress updates are shown before the final completion line.
 3. Exporting
     We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
 
 ## Testing
 
-The packing algorithm is stochastic (it uses `math/rand`). Our regression tests in `pack3d/pack3d_test.go` lock the global RNG seed (`rand.Seed(1)`) so that:
+The packing algorithm is stochastic (it uses `math/rand`). Our regression tests in `pack3d/pack3d_test.go` lock the global RNG seed so that:
+
+- **Seed**: `testPackingInputFile` takes an optional `seed` parameter (defaults to 1). The seed ensures repeatable packing across runs. Note: `math/rand` can behave differently on different machines (OS, Go version, architecture). If tests fail with unexpected packed counts on your machine, try passing a different seed to stabilise results.
 
 - **Output shape is stable**: the output JSON is decoded and must have `len(output) == config.TotalItems()`.
   - Note: `TotalItems()` includes `copack` entries. A config item with `count = N` and `copack` with `K` files produces `N * (1 + K)` packable items and therefore the same number of output entries.
