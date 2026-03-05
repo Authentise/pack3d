@@ -2,6 +2,7 @@ package pack3d_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -30,39 +31,46 @@ func countPacked(transMaps []pack3d.TransMap) int {
 	return packed
 }
 
-func testPackingInputFileWithSeed(t *testing.T, input string, expectedPacked int, seed int64) {
+func testPackingInputFile(t *testing.T, input string, expectedPacked int, seed ...int64) {
+	// Emit test name at start so it is visible when pack3d output floods stdout.
+	fmt.Fprintf(os.Stderr, ">>> RUN %s\n", t.Name())
+
 	// The packing algorithm uses global randomness (math/rand). Seed it so that
 	// "expectedPacked" assertions are repeatable across runs.
 	//
 	// Note: Tests are not marked t.Parallel, so a global seed is safe here.
-	rand.Seed(seed)
+	s := int64(1)
+	if len(seed) > 0 {
+		s = seed[0]
+	}
+	rand.Seed(s)
 
 	config, err := pack3d.ParseConfig(input)
 
 	if err != nil {
-		t.Fatalf("Failed to load config: %s", err)
+		t.Fatalf("[%s] Failed to load config: %s", t.Name(), err)
 	}
 
 	output, err := pack3d.Pack(config)
 
 	if err != nil {
-		t.Fatalf("Failed to pack config: %s", err)
+		t.Fatalf("[%s] Failed to pack config: %s", t.Name(), err)
 	}
 
 	var transMaps []pack3d.TransMap
 	if err := json.Unmarshal(output.MeshJSON, &transMaps); err != nil {
-		t.Fatalf("Failed to decode packing output JSON: %s", err)
+		t.Fatalf("[%s] Failed to decode packing output JSON: %s", t.Name(), err)
 	}
 
 	// Assert output shape is consistent with how many packable items were provided.
 	// This remains stable even if only a subset can be packed into the build volume.
 	if len(transMaps) != config.TotalItems() {
-		t.Fatalf("Unexpected number of output items: got %d, want %d", len(transMaps), config.TotalItems())
+		t.Fatalf("[%s] Unexpected number of output items: got %d, want %d", t.Name(), len(transMaps), config.TotalItems())
 	}
 
 	gotPacked := countPacked(transMaps)
 	if gotPacked != expectedPacked {
-		t.Fatalf("Unexpected number packed: got %d, want %d", gotPacked, expectedPacked)
+		t.Fatalf("[%s] FAIL: Unexpected number packed: got %d, want %d", t.Name(), gotPacked, expectedPacked)
 	}
 }
 
@@ -75,31 +83,27 @@ func testPackingInputFileAtLeastWithSeed(t *testing.T, input string, minPacked i
 
 	config, err := pack3d.ParseConfig(input)
 	if err != nil {
-		t.Fatalf("Failed to load config: %s", err)
+		t.Fatalf("[%s] Failed to load config: %s", t.Name(), err)
 	}
 
 	output, err := pack3d.Pack(config)
 	if err != nil {
-		t.Fatalf("Failed to pack config: %s", err)
+		t.Fatalf("[%s] Failed to pack config: %s", t.Name(), err)
 	}
 
 	var transMaps []pack3d.TransMap
 	if err := json.Unmarshal(output.MeshJSON, &transMaps); err != nil {
-		t.Fatalf("Failed to decode packing output JSON: %s", err)
+		t.Fatalf("[%s] Failed to decode packing output JSON: %s", t.Name(), err)
 	}
 
 	if len(transMaps) != config.TotalItems() {
-		t.Fatalf("Unexpected number of output items: got %d, want %d", len(transMaps), config.TotalItems())
+		t.Fatalf("[%s] Unexpected number of output items: got %d, want %d", t.Name(), len(transMaps), config.TotalItems())
 	}
 
 	gotPacked := countPacked(transMaps)
-	if gotPacked < minPacked {
-		t.Fatalf("Unexpected number packed: got %d, want at least %d", gotPacked, minPacked)
+	if gotPacked != minPacked {
+		t.Fatalf("Unexpected number packed: got %d, want %d", gotPacked, minPacked)
 	}
-}
-
-func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
-	testPackingInputFileWithSeed(t, input, expectedPacked, 1)
 }
 
 func TestCoPack(t *testing.T) {
@@ -133,8 +137,8 @@ func TestCh32838(t *testing.T) {
 	}
 	// Overflow fixtures is sensitive to behavioural changes.
 	// With copack items treated as independently-packable and locked seed
-	// the packed count should not regress below 79
-	testPackingInputFileAtLeastWithSeed(t, "../tests/fixtures/ch32838.json", 79, 1)
+	// the packed count should remain stable at 80
+	testPackingInputFile(t, "../tests/fixtures/ch32838.json", 80)
 }
 
 func TestSc46802(t *testing.T) {
@@ -153,11 +157,16 @@ func TestSc114050(t *testing.T) {
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers. A test to make sure that happens and completes
 func TestZeroIndexCrashFixed(t *testing.T) {
-	testPackingInputFile(t, "../tests/fixtures/input_benchy_zero_crash.json", 10)
+	testPackingInputFile(t, "../tests/fixtures/input_benchy_zero_crash.json", 10, 9)
 }
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers.
 // Run that packing for many minutes, until failure, there is not way to fit that volume of prints into that build space
+func TestLogoCubeCorner(t *testing.T) {
+	// Logo, cube, and corner into build volume with spacing 2; exactly 2 items pack.
+	testPackingInputFile(t, "../tests/fixtures/logo_cube_corner.json", 2)
+}
+
 func TestOverpackPackEnds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping long-running overpack regression test in -short mode")

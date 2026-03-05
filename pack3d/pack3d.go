@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/fogleman/fauxgl"
@@ -55,13 +56,25 @@ func NewPacker(config *Config) (Packer, error) {
 	return packer, err
 }
 
+// loadedItem holds a single mesh ready to add to the model, used for sorting by size.
+type loadedItem struct {
+	object   Object
+	size     fauxgl.Vector
+	mesh     *fauxgl.Mesh
+	count    int
+	volume   float64
+	spacing  float64
+	rotations []fauxgl.Matrix
+}
+
 func (p *Packer) loadConfig(config *Config) error {
 	// Initialize packer fields
 	p.config = config
 	p.model = NewModel()
-	// Capacity of number of items
 	p.objects = make([]Object, 0, len(config.ConfigItems))
 	p.sizes = make([]fauxgl.Vector, 0, len(config.ConfigItems))
+
+	var loaded []loadedItem
 
 	for _, item := range config.ConfigItems {
 		filenames := []string{item.Filename}
@@ -101,24 +114,39 @@ func (p *Packer) loadConfig(config *Config) error {
 			size := mesh.BoundingBox().Size()
 			object.filename = filename
 
-			for range item.Count {
-				p.objects = append(p.objects, object)
-				p.sizes = append(p.sizes, size)
-			}
+			vol := mesh.BoundingBox().Volume() * float64(item.Count)
+			loaded = append(loaded, loadedItem{
+				object:    object,
+				size:      size,
+				mesh:      mesh,
+				count:     item.Count,
+				volume:    vol,
+				spacing:   config.Spacing / 2,
+				rotations: item.AvailableRotations(),
+			})
 
 			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
 			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
-
-			// 6. coarse approx of its volume (used for deviation).
-			p.volume += mesh.BoundingBox().Volume() * float64(item.Count)
-
-			done = timed("building bvh tree")
-			p.model.Add(mesh, BVH_DETAIL, item.Count, config.Spacing/2, item.AvailableRotations())
-			done()
-
 			fmt.Println("______________________________________________________")
 		}
+	}
 
+	// Sort by volume (smallest first) so that when we try "pack N", we pack the
+	// N smallest items. This ensures we pack at least the corner when the logo
+	// and cube are too large for the build volume.
+	sort.Slice(loaded, func(i, j int) bool {
+		return loaded[i].volume < loaded[j].volume
+	})
+
+	for _, li := range loaded {
+		for i := 0; i < li.count; i++ {
+			p.objects = append(p.objects, li.object)
+			p.sizes = append(p.sizes, li.size)
+		}
+		p.volume += li.volume
+		done := timed("building bvh tree")
+		p.model.Add(li.mesh, BVH_DETAIL, li.count, li.spacing, li.rotations)
+		done()
 	}
 
 	return nil
