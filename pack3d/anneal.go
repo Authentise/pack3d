@@ -47,6 +47,8 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 	progressInterval := steps / progressMaxPrints
 	var cycleIndex int
 	var lastProgressTime float64
+	maxConsecFail := max(packItemNum*MAX_STUCK_RATIO, MAX_MOVE_ATTEMPTS)
+	var consecutiveFailures int
 
 	// Track rejection rate to scale step size when stuck in dense packings.
 	var baseDeviation float64
@@ -58,8 +60,6 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 	for step := 0; step < steps; step++ {
 		pct := float64(step) / float64(steps-1)
 		temp := maxTemp * math.Exp(factor*pct)
-		if step%rate == 0 {
-			showProgress(step, steps, bestEnergy, time.Since(start).Seconds())
 		if step%progressInterval == 0 {
 			elapsed := time.Since(start).Seconds()
 			if elapsed >= lastProgressTime+progressThrottleSeconds {
@@ -77,6 +77,7 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 			step-- // failed DoMove didn't change state; don't consume temperature budget
 			continue
 		}
+		consecutiveFailures = 0
 
 		// Scale step size when reject rate is high. Dense packings cause DoMove to
 		// reject most proposals (intersection, containment, out-of-bounds), so only

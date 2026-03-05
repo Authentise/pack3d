@@ -148,11 +148,14 @@ func TestSc46802(t *testing.T) {
 }
 
 func TestSc44515(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping slow fixture in -short mode")
+	}
 	testPackingInputFile(t, "../tests/fixtures/sc44515.json", 17)
 }
 
 func TestSc114050(t *testing.T) {
-	testPackingInputFileWithSeed(t, "../tests/sc114050/sc114050.json", 14, 2)
+	testPackingInputFile(t, "../tests/sc114050/sc114050.json", 14, 2)
 }
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers. A test to make sure that happens and completes
