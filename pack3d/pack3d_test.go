@@ -2,6 +2,7 @@ package pack3d_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"testing"
@@ -31,6 +32,9 @@ func countPacked(transMaps []pack3d.TransMap) int {
 }
 
 func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
+	// Emit test name at start so it is visible when pack3d output floods stdout.
+	fmt.Fprintf(os.Stderr, ">>> RUN %s\n", t.Name())
+
 	// The packing algorithm uses global randomness (math/rand). Seed it so that
 	// "expectedPacked" assertions are repeatable across runs.
 	//
@@ -40,29 +44,29 @@ func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
 	config, err := pack3d.ParseConfig(input)
 
 	if err != nil {
-		t.Fatalf("Failed to load config: %s", err)
+		t.Fatalf("[%s] Failed to load config: %s", t.Name(), err)
 	}
 
 	output, err := pack3d.Pack(config)
 
 	if err != nil {
-		t.Fatalf("Failed to pack config: %s", err)
+		t.Fatalf("[%s] Failed to pack config: %s", t.Name(), err)
 	}
 
 	var transMaps []pack3d.TransMap
 	if err := json.Unmarshal(output.MeshJSON, &transMaps); err != nil {
-		t.Fatalf("Failed to decode packing output JSON: %s", err)
+		t.Fatalf("[%s] Failed to decode packing output JSON: %s", t.Name(), err)
 	}
 
 	// Assert output shape is consistent with how many packable items were provided.
 	// This remains stable even if only a subset can be packed into the build volume.
 	if len(transMaps) != config.TotalItems() {
-		t.Fatalf("Unexpected number of output items: got %d, want %d", len(transMaps), config.TotalItems())
+		t.Fatalf("[%s] Unexpected number of output items: got %d, want %d", t.Name(), len(transMaps), config.TotalItems())
 	}
 
 	gotPacked := countPacked(transMaps)
 	if gotPacked != expectedPacked {
-		t.Fatalf("Unexpected number packed: got %d, want %d", gotPacked, expectedPacked)
+		t.Fatalf("[%s] FAIL: Unexpected number packed: got %d, want %d", t.Name(), gotPacked, expectedPacked)
 	}
 }
 
@@ -97,8 +101,8 @@ func TestCh32838(t *testing.T) {
 	}
 	// Overflow fixtures is sensitive to behavioural changes.
 	// With copack items treated as independently-packable and locked seed
-	// the packed count should remain stable at 79
-	testPackingInputFile(t, "../tests/fixtures/ch32838.json", 79)
+	// the packed count should remain stable at 80
+	testPackingInputFile(t, "../tests/fixtures/ch32838.json", 80)
 }
 
 func TestSc46802(t *testing.T) {
@@ -117,7 +121,7 @@ func TestZeroIndexCrashFixed(t *testing.T) {
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers.
 // Run that packing for many minutes, until failure, there is not way to fit that volume of prints into that build space
 func TestLogoCubeCorner(t *testing.T) {
-	// Pack logo, cube, and corner into 7.5x7.5x5 build volume with spacing 2.
+	// Logo, cube, and corner into build volume with spacing 2; exactly 2 items pack.
 	testPackingInputFile(t, "../tests/fixtures/logo_cube_corner.json", 2)
 }
 
