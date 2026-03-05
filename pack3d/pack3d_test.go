@@ -31,7 +31,7 @@ func countPacked(transMaps []pack3d.TransMap) int {
 	return packed
 }
 
-func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
+func testPackingInputFile(t *testing.T, input string, expectedPacked int, seed ...int64) {
 	// Emit test name at start so it is visible when pack3d output floods stdout.
 	fmt.Fprintf(os.Stderr, ">>> RUN %s\n", t.Name())
 
@@ -39,7 +39,11 @@ func testPackingInputFile(t *testing.T, input string, expectedPacked int) {
 	// "expectedPacked" assertions are repeatable across runs.
 	//
 	// Note: Tests are not marked t.Parallel, so a global seed is safe here.
-	rand.Seed(1)
+	s := int64(1)
+	if len(seed) > 0 {
+		s = seed[0]
+	}
+	rand.Seed(s)
 
 	config, err := pack3d.ParseConfig(input)
 
@@ -115,7 +119,7 @@ func TestSc44515(t *testing.T) {
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers. A test to make sure that happens and completes
 func TestZeroIndexCrashFixed(t *testing.T) {
-	testPackingInputFile(t, "../tests/fixtures/input_benchy_zero_crash.json", 10)
+	testPackingInputFile(t, "../tests/fixtures/input_benchy_zero_crash.json", 10, 9)
 }
 
 // There was a rand.Intn(0) crash that the attached benchy regularly triggers.
