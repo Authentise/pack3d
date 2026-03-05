@@ -32,6 +32,8 @@ Pack3d is a multi-step process:
 2. Packing
     Packing is done largely handled by the original forked code. This is done via an 'annealing' process, which tries multiple orientations and tweaking towards a minimum 'energy'.
     This process can fail. In that case, we either try just restarting the process (might have gotten stuck in a local minimum), or, if it's taken too long, we reduce the number of items to pack. We use binary search to find the maximum number of items to pack.
+
+    **Step-size scaling** (`pack3d/anneal.go`): When packing is dense or the solver is in a shallow minimum, `DoMove` often needs many attempts to propose a valid move (most proposals are rejected for intersection, containment, or out-of-bounds). Only tiny moves succeed at the base step size, so the solver creeps slowly and may never escape. The annealer tracks how often moves "struggle" (exceed a threshold of internal attempts) over a window of 200 steps. If >= 30% of moves struggle, it temporarily increases the translation step size (`Deviation`) by 1.5x, capped at 4x the base. If <= 10% struggle, it scales back down. This adaptive behaviour helps escape dense regions and shallow minima without degrading behaviour when packing is progressing well.
 3. Exporting
     We take the transformations of the packed items and export them to a JSON format. Note that if a model was not packed, it's transformation is a null matrix (all zeroes).
 

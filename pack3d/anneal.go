@@ -18,6 +18,22 @@ type Annealable interface {
 	Copy() Annealable
 }
 
+// Step-size scaling: when DoMove often needs many attempts to find a valid move
+// (dense packing, shallow minima), we temporarily increase Deviation to help escape.
+const (
+	rejectWindowSize        = 200  // steps between scaling decisions
+	highRejectThreshold     = 50   // DoMove attempts before we count it as "struggling"
+	scaleUpRejectRatio      = 0.3  // scale up Deviation if >= 30% of moves struggle
+	scaleDownRejectRatio    = 0.1  // scale down when <= 10% struggle
+	deviationScaleFactor    = 1.5  // multiply/divide factor when adjusting
+	deviationMaxMultiplier  = 4.0  // cap Deviation at base * this
+)
+
+const (
+	progressThrottleSeconds = 5.0  // min time between progress prints
+	progressMaxPrints       = 10   // max prints per run (excl. final)
+)
+
 func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback AnnealCallback, singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (Annealable, int) {
 	start := time.Now()
 	factor := -math.Log(maxTemp / minTemp)
@@ -28,19 +44,52 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 	}
 	bestEnergy := state.Energy()
 	previousEnergy := bestEnergy
-	rate := steps / 200
+	progressInterval := steps / progressMaxPrints
 	var cycleIndex int
+	var lastProgressTime float64
+
+	// Track rejection rate to scale step size when stuck in dense packings.
+	var baseDeviation float64
+	var highRejectCount, windowCount int
+	if model, ok := state.(*Model); ok {
+		baseDeviation = model.Deviation // remember initial step size for scale-down
+	}
+
 	for step := 0; step < steps; step++ {
 		pct := float64(step) / float64(steps-1)
 		temp := maxTemp * math.Exp(factor*pct)
-		// every 200 steps show progress
-		if step%rate == 0 {
-			showProgress(step, steps, bestEnergy, time.Since(start).Seconds())
+		if step%progressInterval == 0 {
+			elapsed := time.Since(start).Seconds()
+			if elapsed >= lastProgressTime+progressThrottleSeconds {
+				showProgress(step, steps, bestEnergy, elapsed)
+				lastProgressTime = elapsed
+			}
 		}
 		undo, ntime := state.DoMove(singleStlSize, frameSize, packItemNum)
 		cycleIndex = ntime
 		if ntime >= 100{
 			return bestState, ntime
+		}
+
+		// Scale step size when reject rate is high. Dense packings cause DoMove to
+		// reject most proposals (intersection, containment, out-of-bounds), so only
+		// tiny moves succeed; we then creep slowly out of minima. Boosting Deviation
+		// allows larger translation steps to be proposed and accepted.
+		if model, ok := state.(*Model); ok && baseDeviation > 0 {
+			windowCount++
+			if ntime >= highRejectThreshold {
+				highRejectCount++
+			}
+			if windowCount >= rejectWindowSize {
+				ratio := float64(highRejectCount) / float64(windowCount)
+				maxDeviation := baseDeviation * deviationMaxMultiplier
+				if ratio >= scaleUpRejectRatio && model.Deviation < maxDeviation {
+					model.Deviation = math.Min(model.Deviation*deviationScaleFactor, maxDeviation)
+				} else if ratio <= scaleDownRejectRatio && model.Deviation > baseDeviation {
+					model.Deviation = math.Max(model.Deviation/deviationScaleFactor, baseDeviation)
+				}
+				highRejectCount, windowCount = 0, 0
+			}
 		}
 		energy := state.Energy()
 		change := energy - previousEnergy
