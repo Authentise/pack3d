@@ -8,10 +8,8 @@ import (
 	"github.com/Authentise/pack3d/pack3d"
 )
 
-const (
-	// TODO: Add build number etc. for backwards compatibility
-	VERSION = "1.6.0"
-)
+// Overridden at build time via -ldflags "-X main.VERSION=..."
+var VERSION = "1.6.0"
 
 func main() {
 	// Flags

@@ -1,0 +1,80 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:  # manual trigger for testing
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go 1.23.8
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.8'
+
+      - name: Determine next version
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "v1.5.0")
+          MAJOR=$(echo "$LATEST_TAG" | cut -d. -f1)
+          MINOR=$(echo "$LATEST_TAG" | cut -d. -f2)
+          PATCH=$(echo "$LATEST_TAG" | cut -d. -f3 | cut -d- -f1)
+          COMMITS=$(git rev-list "${LATEST_TAG}..HEAD" --count 2>/dev/null || echo "1")
+          NEW_PATCH=$((PATCH + 1))
+          VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}-pre.${COMMITS}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Computed version: ${VERSION}"
+
+      - name: Run tests
+        run: go test ./pack3d/ -short -count=1
+
+      - name: Build binary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -ldflags "-X main.VERSION=${VERSION}" \
+            -o "pack3d_${VERSION}" ./cmd/pack3d/
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack3d-binary
+          path: pack3d_${{ steps.version.outputs.version }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pack3d-binary
+
+      - name: Create tag and pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.build.outputs.version }}"
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
+          gh release create "${VERSION}" \
+            --title "pack3d ${VERSION}" \
+            --prerelease \
+            --generate-notes \
+            "pack3d_${VERSION}#pack3d linux/amd64"
