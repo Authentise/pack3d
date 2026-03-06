@@ -3,7 +3,6 @@ package pack3d
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"time"
 
 	"github.com/fogleman/fauxgl"
@@ -47,7 +46,10 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 	progressInterval := steps / progressMaxPrints
 	var cycleIndex int
 	var lastProgressTime float64
-	maxConsecFail := max(packItemNum*MAX_STUCK_RATIO, MAX_MOVE_ATTEMPTS)
+	maxConsecFail := packItemNum * MAX_STUCK_RATIO
+	if maxConsecFail < 1 {
+		maxConsecFail = 1
+	}
 	var consecutiveFailures int
 
 	// Track rejection rate to scale step size when stuck in dense packings.
@@ -101,7 +103,7 @@ func Anneal(state Annealable, maxTemp, minTemp float64, steps int, callback Anne
 		}
 		energy := state.Energy()
 		change := energy - previousEnergy
-		if change > 0 && math.Exp(-change/temp) < rand.Float64() {
+		if change > 0 && math.Exp(-change/temp) < randFloat64() {
 			state.UndoMove(undo)
 		} else {
 			previousEnergy = energy

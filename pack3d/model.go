@@ -2,7 +2,6 @@ package pack3d
 
 import (
 	"math"
-	"math/rand"
 
 	"github.com/fogleman/fauxgl"
 )
@@ -86,7 +85,7 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree, rotations []fauxgl.Matrix) 
 	m.Items = append(m.Items, &item)
 	d := 1.0
 	for !m.ValidChange(index) {
-		item.RotationId = rand.Intn(len(rotations))
+		item.RotationId = randIntn(len(rotations))
 
 		item.Translation = fauxgl.RandomUnitVector().MulScalar(d)
 		d *= 1.2
@@ -261,15 +260,15 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 	var i int = 0
 	// avoids rand.Intn(0) panic / bug
 	if packItemNum > 0 {
-		i = rand.Intn(packItemNum)
+		i = randIntn(packItemNum)
 	}
 	item := m.Items[i] // single model
 	undo := Undo{i, item.RotationId, item.Translation}
 	j := 0
 	for {
 		j += 1
-		if rand.Intn(4) == 0 {
-			item.RotationId = rand.Intn(len(item.AvailableRotations))
+		if randIntn(4) == 0 {
+			item.RotationId = randIntn(len(item.AvailableRotations))
 		} else {
 			// In tight configurations most large translations collide.
 			// After half the budget is spent, switch to finer-grained
@@ -278,8 +277,8 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 			if j > MAX_MOVE_ATTEMPTS/2 {
 				deviation *= 0.25
 			}
-			offset := Axis(rand.Intn(3) + 1).Vector()
-			offset = offset.MulScalar(rand.NormFloat64() * deviation)
+			offset := Axis(randIntn(3)+1).Vector()
+			offset = offset.MulScalar(randNormFloat64() * deviation)
 			item.Translation = item.Translation.Add(offset)
 		}
 

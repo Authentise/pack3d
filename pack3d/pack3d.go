@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"time"
 
 	"github.com/fogleman/fauxgl"
 )
@@ -152,9 +151,9 @@ func (p *Packer) loadConfig(config *Config) error {
 	return nil
 }
 
-// Will attempt to pack model's items, optimistically initially trying them all
-// If this fails, and takes long (>10s), use binary search to find an acceptable
-// number of items to pack
+// Will attempt to pack model's items, optimistically initially trying them all.
+// If this fails after maxRetriesPerTarget attempts, use binary search to find an acceptable
+// number of items to pack.
 func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	buildDimensions := p.config.BuildVolume
 	frameSize := fauxgl.V(buildDimensions[0], buildDimensions[1], buildDimensions[2])
@@ -164,8 +163,12 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	//     reflect the distance.
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
-	start := time.Now()
-	TIME_LIMIT := 12.0 // 12 seconds per stochastic try, then start again
+	// Max retries with fresh random layouts before reducing the packing target.
+	// Replaces the previous time-based limit for deterministic behaviour.
+	// When annealing gets stuck quickly (dense packing), each retry can take ~20ms,
+	// so 500 retries approximates the old 20s budget for fast-failing cases.
+	const maxRetriesPerTarget = 500
+
 	TRY_LIMIT := MAX_MOVE_ATTEMPTS // max number of move attempts before quitting
 
 	// Model with max number of packed items
@@ -178,10 +181,12 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	// Optimistically set packing number as max number of items
 	mid := high
 
+	retries := 0
+
 	//  Mesh packing loop, to find the best STL mesh packing.
 	for {
 		// Attempt to pack
-		iterations := 0
+		var iterations int
 		if mid == 0 {
 			// Pack will crash if mid == 0
 			// Can't pack anything, so return
@@ -205,7 +210,7 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 
 			low = mid + 1
 			mid = int(math.Ceil(float64((low + high) / 2)))
-			start = time.Now()
+			retries = 0
 
 			// Since we optimistically set mid = high, this will be true if the initial
 			// run succeeds, and exit immediately as a success
@@ -216,17 +221,18 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 		} else {
 			// Annealing could not find valid moves — packing is too dense
 			// for this many items. Retry with a fresh random layout until
-			// the time budget for this target count is exhausted.
+			// we exhaust the retry count for this target.
 			p.model.Reset()
+			retries++
 
-			if time.Since(start).Seconds() > TIME_LIMIT {
-				fmt.Printf("Could not pack %d items after %.0fs, reducing target.\n", mid, TIME_LIMIT)
+			if retries >= maxRetriesPerTarget {
+				fmt.Printf("Could not pack %d items after %d retries, reducing target.\n", mid, maxRetriesPerTarget)
 				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
 				fmt.Println("-----------------------------------")
 
 				high = mid - 1
 				mid = int(math.Ceil(float64((low + high) / 2)))
-				start = time.Now()
+				retries = 0
 
 				if low > high {
 					break
