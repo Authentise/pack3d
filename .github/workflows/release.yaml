@@ -1,0 +1,30 @@
+name: Pack3d Release
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Go 1.23.8
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.8'
+      - name: Set version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+      - name: Build linux/amd64 binary
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o pack3d_v${{ steps.version.outputs.version }} cmd/pack3d/main.go
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: pack3d_v*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

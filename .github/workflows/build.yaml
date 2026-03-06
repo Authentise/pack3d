@@ -1,0 +1,18 @@
+name: Pack3d Build
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Go 1.23.8
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.8'
+      - name: Build
+        run: go build -o pack3d cmd/pack3d/main.go
