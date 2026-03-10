@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
+	"time"
 
 	"github.com/fogleman/fauxgl"
 )
@@ -38,6 +38,9 @@ type Object struct {
 	scale          fauxgl.Matrix
 	mfgRotation    fauxgl.Matrix
 	transformation TransMap
+
+	// Empty if no copacking occured
+	copackedFiles []string
 }
 
 type Packer struct {
@@ -55,105 +58,89 @@ func NewPacker(config *Config) (Packer, error) {
 	return packer, err
 }
 
-// loadedItem holds a single mesh ready to add to the model, used for sorting by size.
-type loadedItem struct {
-	object   Object
-	size     fauxgl.Vector
-	mesh     *fauxgl.Mesh
-	count    int
-	volume   float64
-	spacing  float64
-	rotations []fauxgl.Matrix
-}
-
 func (p *Packer) loadConfig(config *Config) error {
 	// Initialize packer fields
 	p.config = config
 	p.model = NewModel()
+	// Capacity of number of items
 	p.objects = make([]Object, 0, len(config.ConfigItems))
 	p.sizes = make([]fauxgl.Vector, 0, len(config.ConfigItems))
 
-	var loaded []loadedItem
-
 	for _, item := range config.ConfigItems {
-		filenames := []string{item.Filename}
-		for _, cp := range item.Copack {
-			filenames = append(filenames, cp.Filename)
+		object := Object{}
+		// 1. load the mesh.
+		done := timed(fmt.Sprintf("loading mesh %s", item.Filename))
+		mesh, err := fauxgl.LoadMesh(item.Filename)
+		if err != nil {
+			return err
 		}
-
-		for _, filename := range filenames {
-			object := Object{}
-
-			// 1. load the mesh.
-			done := timed(fmt.Sprintf("loading mesh %s", filename))
-			mesh, err := fauxgl.LoadMesh(filename)
-			if err != nil {
-				return err
-			}
-			done()
-
-			// 2. mesh centring.
-			mesh.Center()
-
-			// 3. apply scaling (before bounding box / volume).
-			object.scale = fauxgl.Scale(fauxgl.V(item.Scale, item.Scale, item.Scale))
-			if item.Scale != 1.0 {
-				done = timed("scaling mesh")
-				mesh.Transform(object.scale)
-				done()
-			}
-
-			// 4. apply manufacturing rotation (before bounding box / volume).
-			// IMPORTANT: do not confuse manufacturing orientation with the packing
-			// orientations from the annealing further on.
-			object.mfgRotation = item.ManufacturingOrientation()
-			mesh.Transform(object.mfgRotation)
-
-			// 5. sizes / bookkeeping for output.
-			size := mesh.BoundingBox().Size()
-			object.filename = filename
-
-			vol := mesh.BoundingBox().Volume() * float64(item.Count)
-			loaded = append(loaded, loadedItem{
-				object:    object,
-				size:      size,
-				mesh:      mesh,
-				count:     item.Count,
-				volume:    vol,
-				spacing:   config.Spacing / 2,
-				rotations: item.AvailableRotations(),
-			})
-
-			fmt.Printf("  %d triangles\n", len(mesh.Triangles))
-			fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
-			fmt.Println("______________________________________________________")
-		}
-	}
-
-	// Sort by volume (smallest first) so that when we try "pack N", we pack the
-	// N smallest items. This ensures we pack at least the corner when the logo
-	// and cube are too large for the build volume.
-	sort.Slice(loaded, func(i, j int) bool {
-		return loaded[i].volume < loaded[j].volume
-	})
-
-	for _, li := range loaded {
-		for i := 0; i < li.count; i++ {
-			p.objects = append(p.objects, li.object)
-			p.sizes = append(p.sizes, li.size)
-		}
-		p.volume += li.volume
-		done := timed("building bvh tree")
-		p.model.Add(li.mesh, BVH_DETAIL, li.count, li.spacing, li.rotations)
 		done()
+		if item.Copack != nil {
+			copackedFiles := []string{}
+			for _, cp := range item.Copack {
+				done = timed(fmt.Sprintf("loading the co-packed mesh %s", cp.Filename))
+				coMesh, err := fauxgl.LoadMesh(cp.Filename)
+				if err != nil {
+					return err
+				}
+				done()
+
+				// add coMesh to the main mesh. The "child"'s mesh is merged into its parent's.
+				mesh.Add(coMesh)
+				copackedFiles = append(copackedFiles, cp.Filename)
+			}
+			object.copackedFiles = copackedFiles
+		}
+		// 2. mesh centering.
+		mesh.Center()
+
+		// 3. apply the scaling to the mesh.
+		//    Notice that if scaling is to be applied, it is done
+		//    before the computation of the BoundingBox and volume.
+		object.scale = fauxgl.Scale(fauxgl.V(item.Scale, item.Scale, item.Scale))
+		if item.Scale != 1.0 {
+			done = timed("scaling mesh")
+			mesh.Transform(object.scale)
+			done()
+		}
+
+		// 4. apply the manufacturing rotation mesh.
+		//    Notice that this is done before the computation of the BoundingBox and volume.
+		// IMPORTANT: do not confuse manufacturing orientation with the packing
+		//            orientations from the orientations provided by the annealing further on.
+		object.mfgRotation = item.ManufacturingOrientation()
+		mesh.Transform(object.mfgRotation)
+
+		// 5. update all the copies mesh for the json output.
+		size := mesh.BoundingBox().Size()
+		object.filename = item.Filename
+
+		for range item.Count {
+			p.objects = append(p.objects, object)
+			p.sizes = append(p.sizes, size)
+		}
+
+		fmt.Printf("  %d triangles\n", len(mesh.Triangles))
+		fmt.Printf("  %g x %g x %g\n", size.X, size.Y, size.Z)
+
+		// 6. coarse approx of its volume.
+		p.volume += mesh.BoundingBox().Volume()
+
+		done = timed("building bvh tree")
+
+		p.model.Add(mesh, BVH_DETAIL, item.Count, config.Spacing/2, item.AvailableRotations())
+		done()
+
+		fmt.Println("______________________________________________________")
+
 	}
 
 	return nil
 }
 
-// Will attempt to pack model's items, optimistically initially trying them all.
-// If this fails after maxRetriesPerTarget attempts, use binary search to find an acceptable
-// number of items to pack.
+// Will attempt to pack model's items, optimistically initially trying them all
+// If this fails, and takes long (>10s), use binary search to find an acceptable
+// number of items to pack
 func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	buildDimensions := p.config.BuildVolume
 	frameSize := fauxgl.V(buildDimensions[0], buildDimensions[1], buildDimensions[2])
@@ -163,13 +150,9 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	//     reflect the distance.
 	p.model.Deviation = math.Pow(p.volume, 1.0/3) / 32
 
-	// Max retries with fresh random layouts before reducing the packing target.
-	// Replaces the previous time-based limit for deterministic behaviour.
-	// When annealing gets stuck quickly (dense packing), each retry can take ~20ms,
-	// so 500 retries approximates the old 20s budget for fast-failing cases.
-	const maxRetriesPerTarget = 500
-
-	TRY_LIMIT := MAX_MOVE_ATTEMPTS // max number of move attempts before quitting
+	start := time.Now()
+	TIME_LIMIT:= 10.0 //10 seconds per Stochastic try , then start again
+	TRY_LIMIT := 100 // max number of Stochastic tries before quitting
 
 	// Model with max number of packed items
 	bestModel := NewModel()
@@ -181,12 +164,10 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 	// Optimistically set packing number as max number of items
 	mid := high
 
-	retries := 0
-
 	//  Mesh packing loop, to find the best STL mesh packing.
 	for {
 		// Attempt to pack
-		var iterations int
+		iterations := 0
 		if mid == 0 {
 			// Pack will crash if mid == 0
 			// Can't pack anything, so return
@@ -200,7 +181,8 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			mid,
 		)
 
-		if iterations < TRY_LIMIT {
+		// Iterations < 100 considered successful
+		if iterations <  TRY_LIMIT {
 			fmt.Println("Succeeded (maybe pack more next time) ")
 			fmt.Println("packing goal #, max#, min# is: ", mid, high, low)
 			fmt.Println("-----------------------------------------")
@@ -208,31 +190,35 @@ func (p *Packer) getOptimallyPackedModel() (*Model, int) {
 			bestPacked = mid
 			bestModel = p.model
 
+			//  if success, 'bisect' extend "models to pack" count 
 			low = mid + 1
 			mid = int(math.Ceil(float64((low + high) / 2)))
-			retries = 0
+			start = time.Now()
 
 			// Since we optimistically set mid = high, this will be true if the initial
-			// run succeeds, and exit immediately as a success
+			// run succeeds, and exit immedately as a success
 			if low > high {
 				break
 			}
 			p.model.Reset()
 		} else {
-			// Annealing could not find valid moves — packing is too dense
-			// for this many items. Retry with a fresh random layout until
-			// we exhaust the retry count for this target.
+			// If iterations > 100, we consider this as failed. Should take 1-2 iterations
 			p.model.Reset()
-			retries++
-
-			if retries >= maxRetriesPerTarget {
-				fmt.Printf("Could not pack %d items after %d retries, reducing target.\n", mid, maxRetriesPerTarget)
+			
+			fmt.Println("Iterations > 100. Failed (maybe pack fewer next time)")
+			if time.Since(start).Seconds() > TIME_LIMIT {
+				//  if failed, and past time limit, 'bisect' shrink "models to pack" count 
 				fmt.Println("Next packing goal # , max #, min # is: ", mid, high, low)
 				fmt.Println("-----------------------------------")
 
+				// Binary search for lower packing number
 				high = mid - 1
 				mid = int(math.Ceil(float64((low + high) / 2)))
-				retries = 0
+
+				// This array is a copy, this shouldn't do anything?
+				p.model.Transformation()[mid] = NULL_TRANSFORMATION
+				// Reset initial start time
+				start = time.Now()
 
 				if low > high {
 					break
@@ -281,6 +267,12 @@ func (p *Packer) generateTransformations(model *Model, itemsPacked int) ([]Trans
 			// Otherwise, set as empty matrix
 			transMaps = append(transMaps, TransMap{object.filename, transMatrix, 0})
 		}
+
+		// Add the co-packed meshes to transMaps.
+		for _, filename := range object.copackedFiles {
+			// Volume = 0 since it's already included in the parent
+			transMaps = append(transMaps, TransMap{filename, transMatrix, 0})
+		}
 	}
 	done()
 
@@ -305,13 +297,6 @@ func Pack(config *Config) (*PackingOutput, error) {
 	meshJson, err := json.Marshal(transformations)
 	if err != nil {
 		return nil, err
-	}
-
-	// The JSON output always includes all items (packed and unpacked, with null
-	// transformations for unpacked ones). However, the STL output is for debugging
-	// and should only include the items that actually packed.
-	if itemsPacked < len(model.Items) {
-		model.Items = model.Items[:itemsPacked]
 	}
 
 	// Print fill ratio to stdout

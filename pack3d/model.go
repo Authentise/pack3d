@@ -2,6 +2,7 @@ package pack3d
 
 import (
 	"math"
+	"math/rand"
 
 	"github.com/fogleman/fauxgl"
 )
@@ -85,7 +86,7 @@ func (m *Model) add(mesh *fauxgl.Mesh, trees []Tree, rotations []fauxgl.Matrix) 
 	m.Items = append(m.Items, &item)
 	d := 1.0
 	for !m.ValidChange(index) {
-		item.RotationId = randIntn(len(rotations))
+		item.RotationId = rand.Intn(len(rotations))
 
 		item.Translation = fauxgl.RandomUnitVector().MulScalar(d)
 		d *= 1.2
@@ -171,18 +172,6 @@ func (m *Model) ValidChange(i int) bool {
 		}
 		item2 := m.Items[j]
 		tree2 := item2.Trees[item2.RotationId]
-
-		// Better solution for stoppping "nested" packing,  where one item is packed
-		// entirely inside another.
-		// The intersection test is surface-based, so if a model has a hollow cavity
-		// another model could fit inside without failing the intersection test.
-		// We instead now reject full encapsulation of bvm boxes
-		b1 := tree1[0].Translate(item1.Translation)
-		b2 := tree2[0].Translate(item2.Translation)
-		if b1.ContainsBox(b2) || b2.ContainsBox(b1) {
-			return false
-		}
-
 		if tree1.Intersects(tree2, item1.Translation, item2.Translation) {
 			return false
 		}
@@ -195,10 +184,8 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 	var points []fauxgl.Vector
 	var point fauxgl.Vector
 
-	transformation := m.Items[i].Matrix()
+	transformation := m.Transformation()[i]
 	size := singleStlSize[i]
-	halfFrame := frameSize.MulScalar(0.5)
-	halfSize := size.MulScalar(0.5)
 
 	// Rotate and then check that the rotation applied to the bound is valid in the for loop.
 
@@ -211,24 +198,20 @@ func (m *Model) ValidBound(i int, singleStlSize []fauxgl.Vector, frameSize fauxg
 	//       the folder manual_tests: sc-46802_test. Switch the Meshlab visualisation
 	//       from faces to points to be able to spot the nested geometries inside the
 	//       neck of the STL bust.
-	// Meshes are centred during loading, so bounding corners are +/- halfSize.
-	points = append(points, fauxgl.V(-halfSize.X, -halfSize.Y, -halfSize.Z))
-	points = append(points, fauxgl.V(halfSize.X, -halfSize.Y, -halfSize.Z))
-	points = append(points, fauxgl.V(-halfSize.X, halfSize.Y, -halfSize.Z))
-	points = append(points, fauxgl.V(-halfSize.X, -halfSize.Y, halfSize.Z))
-	points = append(points, fauxgl.V(halfSize.X, halfSize.Y, -halfSize.Z))
-	points = append(points, fauxgl.V(halfSize.X, -halfSize.Y, halfSize.Z))
-	points = append(points, fauxgl.V(-halfSize.X, halfSize.Y, halfSize.Z))
-	points = append(points, fauxgl.V(halfSize.X, halfSize.Y, halfSize.Z))
+	points = append(points, fauxgl.V(0.0, 0.0, 0.0))
+	points = append(points, fauxgl.V(size.X, 0.0, 0.0))
+	points = append(points, fauxgl.V(0.0, size.Y, 0.0))
+	points = append(points, fauxgl.V(0.0, 0.0, size.Z))
+	points = append(points, fauxgl.V(size.X, size.Y, 0.0))
+	points = append(points, fauxgl.V(size.X, 0.0, size.Z))
+	points = append(points, fauxgl.V(0.0, size.Y, size.Z))
+	points = append(points, size)
 
 	for j := 0; j < 8; j++ {
 		point = points[j]
 		point = transformation.MulPosition(point)
 		point = point.Abs()
-		// `frameSize` represents the full build volume dimensions.
-		// Packing is centred around the origin, so ensure the absolute coordinate fits
-		// within half the frame in each dimension.
-		if point.Max(halfFrame) == halfFrame {
+		if point.Max(frameSize) == frameSize {
 			continue
 		} else {
 			return false
@@ -256,30 +239,25 @@ func (m *Model) Energy() float64 {
 }
 
 func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, packItemNum int) (Undo, int) {
-
+	
 	var i int = 0
 	// avoids rand.Intn(0) panic / bug
-	if packItemNum > 0 {
-		i = randIntn(packItemNum)
+	if packItemNum > 0 { 
+		i = rand.Intn(packItemNum) 
 	}
 	item := m.Items[i] // single model
 	undo := Undo{i, item.RotationId, item.Translation}
 	j := 0
 	for {
 		j += 1
-		if randIntn(4) == 0 {
-			item.RotationId = randIntn(len(item.AvailableRotations))
+		if rand.Intn(4) == 0 {
+			// rotate, 1/4 of probability
+			item.RotationId = rand.Intn(len(item.AvailableRotations)) // do a random rotation, it's a random index
 		} else {
-			// In tight configurations most large translations collide.
-			// After half the budget is spent, switch to finer-grained
-			// moves that are more likely to find nearby valid positions.
-			deviation := m.Deviation
-			if j > MAX_MOVE_ATTEMPTS/2 {
-				deviation *= 0.25
-			}
-			offset := Axis(randIntn(3)+1).Vector()
-			offset = offset.MulScalar(randNormFloat64() * deviation)
-			item.Translation = item.Translation.Add(offset)
+			// translate, 3/4 of probability
+			offset := Axis(rand.Intn(3) + 1).Vector()                   // Pick a random axis
+			offset = offset.MulScalar(rand.NormFloat64() * m.Deviation) // A random translation in x or y or z (vector)
+			item.Translation = item.Translation.Add(offset)             // add offset to translation
 		}
 
 		if m.ValidChange(i) && m.ValidBound(i, singleStlSize, frameSize) {
@@ -288,7 +266,7 @@ func (m *Model) DoMove(singleStlSize []fauxgl.Vector, frameSize fauxgl.Vector, p
 
 		item.RotationId = undo.Rotation
 		item.Translation = undo.Translation
-		if j >= MAX_MOVE_ATTEMPTS {
+		if j >= 100 {
 			break
 		}
 	}

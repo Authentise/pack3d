@@ -14,9 +14,7 @@ type Config struct {
 func (c *Config) TotalItems() int {
 	total := 0
 	for _, item := range c.ConfigItems {
-		// `copack` entries are treated as
-		// additional, independently-packable items, so they contribute to the total.
-		total += item.Count * (1 + len(item.Copack))
+		total += item.Count
 	}
 	return total
 }

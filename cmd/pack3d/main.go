@@ -10,7 +10,7 @@ import (
 
 const (
 	// TODO: Add build number etc. for backwards compatibility
-	VERSION = "1.6.0"
+	VERSION = "1.6.2"
 )
 
 func main() {
